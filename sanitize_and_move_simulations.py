@@ -6,7 +6,6 @@ import os
 if os.path.exists(sys.argv[1]):
     path_parts = os.path.normpath(sys.argv[1]).split(os.sep)
 
-
     if len(path_parts) >= 2:
         yaml_file_path = os.path.join(sys.argv[1], "params", "preproc_params.yaml")
 
@@ -23,4 +22,5 @@ if os.path.exists(sys.argv[1]):
 
         destination_path = os.path.join("/src/install/test_env/share/test_env/scenarios", last_two_dirs)    
         shutil.copytree(sys.argv[1],destination_path, dirs_exist_ok=True)
-    
+else:
+    print(f"Path does NOT exist: {sys.argv[1]}")    
