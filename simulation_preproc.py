@@ -12,6 +12,9 @@ if response.status_code == 200:
 
 
     simulation_path = os.path.join('/simulation_data',user,simulation_dir)
-    subprocess.run(['python3', "sanitize_and_move_simulations.py", simulation_path])    
+    subprocess.run(['python3', "sanitize_and_move_simulations.py", simulation_path]) 
+
+    subprocess.run(['ros2', 'launch', 'test_env', 'gaden_preproc_launch.py', f'scenario:={user+"_"+simulation_dir}'])
+
 else:
     print(f"Failed to get data. Status code: {response.status_code}")

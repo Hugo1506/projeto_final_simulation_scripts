@@ -3,6 +3,29 @@ import shutil
 import os
 
 
+def rename_files_in_directory(directory,yaml_file_path):
+    for filename in os.listdir(directory):
+        if filename.endswith(".csv"):
+            parts = filename.split('_')
+            new_filename = f"{parts[0]}_{parts[1]}_{parts[-1]}"
+            old_file_path = os.path.join(directory, filename)
+            new_file_path = os.path.join(directory, new_filename)
+            os.rename(old_file_path, new_file_path)
+
+            update_yaml_file(yaml_file_path, parts)
+
+def update_yaml_file(yaml_file_path, parts):
+    if os.path.exists(yaml_file_path):
+        with open(yaml_file_path, "r") as file:
+            content = file.read()
+
+        new_wind_sim_path = f"{parts[0]}_{parts[1]}"
+
+        updated_content = content.replace("wind_sim_path: \"1ms/wind_at_cell_centers\"", f'wind_sim_path: "{new_wind_sim_path}"')
+
+        with open(yaml_file_path, "w") as file:
+            file.write(updated_content)
+
 if os.path.exists(sys.argv[1]):
     path_parts = os.path.normpath(sys.argv[1]).split(os.sep)
 
@@ -22,5 +45,18 @@ if os.path.exists(sys.argv[1]):
 
         destination_path = os.path.join("/src/install/test_env/share/test_env/scenarios", last_two_dirs)    
         shutil.copytree(sys.argv[1],destination_path, dirs_exist_ok=True)
+
+        simulation_path = os.path.join(destination_path, "simulations")
+        shutil.copytree("/src/install/test_env/share/test_env/scenarios/10x6_central_obstacle/simulations/",simulation_path, dirs_exist_ok=True)
+
+        wind_simulations_path = os.path.join(destination_path, "wind_simulations")
+        if os.path.exists(wind_simulations_path):
+            yaml_file_path = os.path.join(simulation_path, "sim1.yaml")
+            rename_files_in_directory(wind_simulations_path,yaml_file_path)
+        else:
+            print(f"Wind simulations directory does not exist at {wind_simulations_path}")
 else:
-    print(f"Path does NOT exist: {sys.argv[1]}")    
+    print(f"Path does NOT exist: {sys.argv[1]}")  
+
+
+
