@@ -16,5 +16,13 @@ if response.status_code == 200:
 
     subprocess.run(['ros2', 'launch', 'test_env', 'gaden_preproc_launch.py', f'scenario:={user+"_"+simulation_dir}'])
 
+    updateStatusToInSimulation = requests.post('http://172.17.0.3:3000/setStatusToInSimulation', json={
+        'simulation': data.get('simulation'),
+    })
+
+    updateStatusToDone = requests.post('http://172.17.0.3:3000/setStatusToDone', json={
+        'simulation': data.get('simulation'),
+    })
+
 else:
     print(f"Failed to get data. Status code: {response.status_code}")
