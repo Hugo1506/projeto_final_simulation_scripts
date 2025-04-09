@@ -4,7 +4,7 @@ import subprocess
 import inotify.adapters
 
 # vai monitorar todos os eventos que ocorren no directoria /simulation_data e às suas subdiretorias
-i = inotify.adapters.InotifyTree('/simulation_data')
+i = inotify.adapters.InotifyTree('/simulation_data/')
 
 while True:
     # se o evento for NONE (não existir) continua a execução do loop
@@ -15,7 +15,7 @@ while True:
         event_mask = event[1]  
 
         # se alguma diretoria ou ficheiro for criado então executa o código
-        if 'IN_CREATE' in event_mask in event_mask:
+        if 'IN_CREATE' in event_mask :
             # GET request para obter os dados da próxima simulação 
             response = requests.get('http://172.17.0.3:3000/getFirstInQueue')
             if response.status_code == 200:
