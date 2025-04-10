@@ -41,6 +41,21 @@ if os.path.exists(sys.argv[1]):
             with open(yaml_file_path, "w") as file:
                 file.write(updated_content)
 
+        yaml_sim_file_path = os.path.join(sys.argv[1], "params", "gaden_params.yaml")
+
+        if os.path.exists(yaml_sim_file_path):
+            with open(yaml_sim_file_path, "r") as file:
+                sim_content = file.read()
+
+            updated_sim_content = sim_content.replace("pressure: '1.0'", "pressure: 1.0")
+            updated_sim_content = updated_sim_content.replace("wind_time_step: '1.0'", "wind_time_step: 1.0")
+            updated_sim_content = updated_sim_content.replace("results_min_time: '0.0'", "results_min_time: 0.0")
+            updated_sim_content = updated_sim_content.replace("results_min_time: '0.0'", "results_min_time: 0.0")
+            with open(yaml_sim_file_path, "w") as file:
+                file.write(updated_sim_content)
+        else:
+            print(f"YAML simulation file does not exist at {yaml_sim_file_path}")
+
         last_two_dirs = os.path.join(path_parts[-2], path_parts[-1]).replace("/","_")
 
         destination_path = os.path.join("/src/install/test_env/share/test_env/scenarios", last_two_dirs)    

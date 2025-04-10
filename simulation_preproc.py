@@ -6,6 +6,22 @@ import inotify.adapters
 # vai monitorar todos os eventos que ocorren no directoria /simulation_data e às suas subdiretorias
 i = inotify.adapters.InotifyTree('/simulation_data/')
 
+gaden_launch_path = '/src/gaden/test_env/launch'
+ros_work_dir = '/src'
+
+if (not os.path.exists(os.path.join(gaden_launch_path,'gaden_sim_no_gui_launch.py')) ):
+    with open('/projeto_final_simulation_scripts/gaden_sim_no_gui_launch.py', 'r') as file:
+        gaden_sim_no_gui_launch_py_content = file.read()
+    
+    with open(os.path.join(gaden_launch_path, 'gaden_sim_no_gui_launch.py'), 'w') as file:
+        file.write(gaden_sim_no_gui_launch_py_content)
+
+    subprocess.run(['colcon', 'build', '--symlink-install'], cwd=ros_work_dir)
+
+
+    
+
+
 while True:
     # se o evento for NONE (não existir) continua a execução do loop
     for event in i.event_gen():
@@ -38,12 +54,13 @@ while True:
                 updateStatusToInSimulation = requests.post('http://172.17.0.3:3000/setStatusToInSimulation', json={
                     'simulation': data.get('simulation'),
                 })
+                
+                # corre o script modificado de simulação do gaden para fazer a simulação mas sem GUI
+                subprocess.run(['ros2', 'launch', 'test_env', 'gaden_sim_no_gui_launch.py', f'scenario:={user+"_"+simulation_dir}'])
 
                 # faz um POST request para atualizar o status da simulação para indicar que já está concluída
                 updateStatusToDone = requests.post('http://172.17.0.3:3000/setStatusToDone', json={
                     'simulation': data.get('simulation'),
                 })
-            else:
-                print(f"Error")
         else:
             continue
