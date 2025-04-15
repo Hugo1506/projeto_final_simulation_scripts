@@ -9,10 +9,21 @@ import imageio
 import time
 import os
 from IPython.display import clear_output
+import sys
+import requests
+import base64
+import io
+import zlib
+
+scenario_path = os.path.join("/src/install/test_env/share/test_env/scenarios",sys.argv[1])
+simulation_path = os.path.join(scenario_path,"gas_simulations/sim1")
+ocuppancy_path = os.path.join(scenario_path,"OccupancyGrid3D.csv")
+
+simulation_name = sys.argv[1].replace("_sim_", "_")
 
 # ---- Simulation Setup ----
-sim = Simulation("/src/install/test_env/share/test_env/scenarios/new_sim_114/gas_simulations/sim1", \
-                 "/src/install/test_env/share/test_env/scenarios/new_sim_114/OccupancyGrid3D.csv")
+sim = Simulation(simulation_path, \
+                 ocuppancy_path)
 
 # ---- Parameters ----
 maxHeight = sim.env_max.z
@@ -30,6 +41,7 @@ def run_simulation_and_save_gif(height):
     frames.clear()
     sim.playSimulation(0, 0.5)
     time_start = time.time()
+    gif_io = io.BytesIO()
 
     while (time.time() - time_start) < timeLimitSeconds:
         clear_output(wait=True)
@@ -61,10 +73,22 @@ def run_simulation_and_save_gif(height):
 
     sim.stopPlaying()
 
-    # Save frames as GIF
-    gif_path = 'test_'+str(height)+'.gif'
-    frames[0].save(gif_path, save_all=True, append_images=frames[1:], duration=frame_duration_ms, loop=0)
-    print(f"\n✅ GIF saved at: {os.path.abspath(gif_path)}")
+    gif_io = io.BytesIO()
+    frames[0].save(gif_io, format='GIF', save_all=True, append_images=frames[1:], duration=frame_duration_ms, loop=0)
+
+    gif_raw = gif_io.getvalue()
+
+    compressed_gif = zlib.compress(gif_raw)
+
+    compressed_gif_base64 = base64.b64encode(compressed_gif).decode('utf-8')
+
+    response = requests.post('http://172.17.0.3:3000/uploadSimulationResults', json={
+        'simulation': simulation_name,
+        'type': 'heatmap',
+        'gif': compressed_gif_base64,
+        'height': height,
+    })
+    
 
 # ---- Run It! ----
 
