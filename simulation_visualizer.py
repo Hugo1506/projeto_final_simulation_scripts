@@ -27,7 +27,7 @@ sim = Simulation(simulation_path, \
 arrowLength = 10
 spaceBetweenArrows = 5
 maxHeight = sim.env_max.z
-timeLimitSeconds = 20        
+timeLimitSeconds = 15       
 minHeight = sim.env_min.z              
 max_ppm = 10.0                 
 imageSizeFactor = 5          
@@ -41,29 +41,30 @@ def save_heatmap_gifs(height):
     sim.playSimulation(0, 0.5)
     time_start = time.time()
     gif_io = io.BytesIO()
+    iteration_counter = 0
 
     while (time.time() - time_start) < timeLimitSeconds:
         clear_output(wait=True)
         iteration = sim.getCurrentIteration()
+        
+        if iteration == iteration_counter:
+            iteration_counter += 1
+            map = sim.generateConcentrationMap2D(iteration, height, True)
+            map_scaled = map * (255.0 / max_ppm)
+            formatted_map = numpy.array(numpy.clip(map_scaled, 0, 255), dtype=numpy.uint8)
 
-        map = sim.generateConcentrationMap2D(iteration, height, True)
-        map_scaled = map * (255.0 / max_ppm)
-        formatted_map = numpy.array(numpy.clip(map_scaled, 0, 255), dtype=numpy.uint8)
+            heatmap = cv2.applyColorMap(formatted_map, cv2.COLORMAP_JET)
 
-        heatmap = cv2.applyColorMap(formatted_map, cv2.COLORMAP_JET)
+            block(map, heatmap)
 
-        block(map, heatmap)
+            newshape = (imageSizeFactor * heatmap.shape[1], imageSizeFactor * heatmap.shape[0])
+            heatmap = cv2.resize(heatmap, newshape)
 
-        newshape = (imageSizeFactor * heatmap.shape[1], imageSizeFactor * heatmap.shape[0])
-        heatmap = cv2.resize(heatmap, newshape)
+            rgb_image = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
+            pil_img = Image.fromarray(rgb_image)
+            frames.append(pil_img)
 
-        # Convert to RGB for saving
-        rgb_image = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
-        pil_img = Image.fromarray(rgb_image)
-        frames.append(pil_img)
-
-        print(f"Captured frame for iteration {iteration}")
-        time.sleep(0.5)
+            print(f"Captured frame for iteration {iteration}")
 
     sim.stopPlaying()
 
@@ -88,10 +89,14 @@ def save_wind_vector_field_gif(height):
     sim.playSimulation(0, 0.5)
     time_start = time.time()
     gif_io = io.BytesIO()
+    iteration_counter = 0
 
     while (time.time() - time_start) < timeLimitSeconds:
+        iteration = sim.getCurrentIteration()
+        if iteration == iteration_counter:
+            iteration_counter += 1
             clear_output(wait=True)
-            map = sim.generateWindMap2D(sim.getCurrentIteration(), height, True)
+            map = sim.generateWindMap2D(iteration, height, True)
 
             base_image = numpy.full(map.shape, 255, numpy.uint8)
             block(map, base_image)
@@ -115,7 +120,6 @@ def save_wind_vector_field_gif(height):
             frames.append(pil_img)
 
             print(f"Captured wind vector field at height {height:.2f}")
-            time.sleep(0.5)
 
     sim.stopPlaying()
 
@@ -137,31 +141,31 @@ def save_contour_map_gif(height: float):
     frames.clear()
     sim.playSimulation(0, 0.5)
     time_start = time.time()
-
+    iteration_counter = 0
     while (time.time() - time_start) < timeLimitSeconds:
         clear_output(wait=True)
         iteration = sim.getCurrentIteration()
+        if iteration == iteration_counter:
+            iteration_counter += 1
+            map = sim.generateConcentrationMap2D(iteration, height, True)
+            map = map * (255.0 / max_ppm)
+            formatted_map = numpy.array(numpy.clip(map, 0, 255), dtype=numpy.uint8)
 
-        map = sim.generateConcentrationMap2D(iteration, height, True)
-        map = map * (255.0 / max_ppm)
-        formatted_map = numpy.array(numpy.clip(map, 0, 255), dtype=numpy.uint8)
+            newshape = (imageSizeFactor * formatted_map.shape[1], imageSizeFactor * formatted_map.shape[0])
+            formatted_map = cv2.resize(formatted_map, newshape)
 
-        newshape = (imageSizeFactor * formatted_map.shape[1], imageSizeFactor * formatted_map.shape[0])
-        formatted_map = cv2.resize(formatted_map, newshape)
+            ret, thresh = cv2.threshold(formatted_map, contour_threshold, 255, 0)
+            contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-        ret, thresh = cv2.threshold(formatted_map, contour_threshold, 255, 0)
-        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-        formatted_map = cv2.cvtColor(formatted_map, cv2.COLOR_GRAY2BGR)
-        cv2.drawContours(formatted_map, contours, -1, (0, 255, 0), 3)
+            formatted_map = cv2.cvtColor(formatted_map, cv2.COLOR_GRAY2BGR)
+            cv2.drawContours(formatted_map, contours, -1, (0, 255, 0), 3)
 
 
-        rgb_image = cv2.cvtColor(formatted_map, cv2.COLOR_BGR2RGB)
-        pil_img = Image.fromarray(rgb_image)
-        frames.append(pil_img)
+            rgb_image = cv2.cvtColor(formatted_map, cv2.COLOR_BGR2RGB)
+            pil_img = Image.fromarray(rgb_image)
+            frames.append(pil_img)
 
-        print(f"Iteration {iteration} — Gas patches: {len(contours)}")
-        time.sleep(0.5)
+            print(f"Iteration {iteration} — Gas patches: {len(contours)}")
 
     sim.stopPlaying()
 
