@@ -1,0 +1,34 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2025-04-22-14-26-19-357543-219b9827d616-3151
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [preprocessing-1]: process started with pid [3152]
+[preprocessing-1] [0m[INFO] [1745331979.639307860] [GadenPreprocessing]: Number of models: 2[0m
+[preprocessing-1] [0m[INFO] [1745331979.640073023] [GadenPreprocessing]: Dimensions are:
+[preprocessing-1] 	x : (0, 5)
+[preprocessing-1] 	y : (0, 4)
+[preprocessing-1] 	z : (0, 2.5)
+[preprocessing-1] [0m
+[preprocessing-1] [0m[INFO] [1745331979.640295344] [GadenPreprocessing]: Dimensions are:
+[preprocessing-1] 	x : (-0.2, 10.2)
+[preprocessing-1] 	y : (-0.2, 6.2)
+[preprocessing-1] 	z : (0, 2.5)
+[preprocessing-1] [0m
+[preprocessing-1] [0m[INFO] [1745331979.648725918] [GadenPreprocessing]: Parsing environment model: /src/install/test_env/share/test_env/scenarios/new_sim_201/cad_models/new_201_7af17034551cab54.stl[0m
+[preprocessing-1] [0m[INFO] [1745331979.670115170] [GadenPreprocessing]: 25%[0m
+[preprocessing-1] [0m[INFO] [1745331979.670423377] [GadenPreprocessing]: 75%[0m
+[preprocessing-1] [0m[INFO] [1745331979.670721149] [GadenPreprocessing]: 91%[0m
+[preprocessing-1] [0m[INFO] [1745331979.690402658] [GadenPreprocessing]: Parsing environment model: /src/install/test_env/share/test_env/scenarios/new_sim_201/cad_models/new_201_ec54f99964cce5a7.stl[0m
+[preprocessing-1] [0m[INFO] [1745331979.690786224] [GadenPreprocessing]: 25%[0m
+[preprocessing-1] [0m[INFO] [1745331979.690863076] [GadenPreprocessing]: 75%[0m
+[preprocessing-1] [0m[INFO] [1745331979.700917890] [GadenPreprocessing]: 85%[0m
+[preprocessing-1] [0m[INFO] [1745331979.701002893] [GadenPreprocessing]: 96%[0m
+[preprocessing-1] [0m[INFO] [1745331979.702732502] [GadenPreprocessing]: Number of outlet models: 2[0m
+[preprocessing-1] [0m[INFO] [1745331979.702753707] [GadenPreprocessing]: Parsing outlet model: /src/install/test_env/share/test_env/scenarios/new_sim_201/cad_models/new_201_750f78054c7344f4.stl[0m
+[preprocessing-1] [0m[INFO] [1745331979.720002353] [GadenPreprocessing]: 25%[0m
+[preprocessing-1] [0m[INFO] [1745331979.720051657] [GadenPreprocessing]: 75%[0m
+[preprocessing-1] [0m[INFO] [1745331979.720148784] [GadenPreprocessing]: 91%[0m
+[preprocessing-1] [0m[INFO] [1745331979.730010074] [GadenPreprocessing]: Parsing outlet model: /src/install/test_env/share/test_env/scenarios/new_sim_201/cad_models/new_201_db9056e522a290ee.stl[0m
+[preprocessing-1] [0m[INFO] [1745331979.752381588] [GadenPreprocessing]: 75%[0m
+[preprocessing-1] [0m[INFO] [1745331979.752468662] [GadenPreprocessing]: 91%[0m
+[preprocessing-1] [0m[INFO] [1745331980.546104951] [GadenPreprocessing]: [34mPreprocessing done[0m[0m
+[INFO] [preprocessing-1]: process has finished cleanly [pid 3152]
+Return code: 0

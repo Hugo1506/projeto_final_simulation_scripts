@@ -2,12 +2,82 @@ import requests
 import os
 import subprocess
 import inotify.adapters
+import re
 
 # vai monitorar todos os eventos que ocorren no directoria /simulation_data e às suas subdiretorias
 i = inotify.adapters.InotifyTree('/simulation_data/')
 
 gaden_launch_path = '/src/gaden/test_env/launch'
 ros_work_dir = '/src'
+
+log_file_path = '/projeto_final_simulation_scripts/simulation.log'
+
+x_min, x_max = None, None
+y_min, y_max = None, None
+z_min, z_max = None, None
+
+def extract_min_max(log_file_path,simulation_dir):
+    params_path = os.path.join("/simulation_data/",simulation_dir,"params/gaden_params.yaml")
+
+    with open(log_file_path, 'r', encoding='utf-8') as file:
+        log_content = file.read()
+
+    with open(params_path, 'r', encoding='utf-8') as file:
+        params_content = file.read()
+
+    x_pattern = re.compile(r'x\s*:\s*\(([-\d.]+),\s*([-\d.]+)\)')
+    y_pattern = re.compile(r'y\s*:\s*\(([-\d.]+),\s*([-\d.]+)\)')
+    z_pattern = re.compile(r'z\s*:\s*\(([-\d.]+),\s*([-\d.]+)\)')   
+
+    x_match = x_pattern.search(log_content)
+    y_match = y_pattern.search(log_content)
+    z_match = z_pattern.search(log_content)
+
+    if x_match and y_match and z_match:
+        x_min, x_max = float(x_match.group(1)), float(x_match.group(2))
+        y_min, y_max = float(y_match.group(1)), float(y_match.group(2))
+        z_min, z_max = float(z_match.group(1)), float(z_match.group(2))
+
+    else:
+        print("No matches found for x, y, or z in the log file.")
+    
+
+    x_param_pattern = re.compile(r'source_position_x\s*:\s*\'?([-.\d]+)\'?')
+    y_param_pattern = re.compile(r'source_position_y\s*:\s*\'?([-.\d]+)\'?')
+    z_param_pattern = re.compile(r'source_position_z\s*:\s*\'?([-.\d]+)\'?')
+
+    x_param_match = x_param_pattern.search(params_content)
+    y_param_match = y_param_pattern.search(params_content)
+    z_param_match = z_param_pattern.search(params_content)
+
+    if x_param_match and y_param_match and z_param_match:
+        x_param = float(x_param_match.group(1))
+        y_param = float(y_param_match.group(1))
+        z_param = float(z_param_match.group(1))
+        if x_param > x_min and x_param < x_max and y_param > y_min and y_param < y_max and z_param > z_min and z_param < z_max:
+            return True
+        else:
+            return False
+    else:
+        print("No matches found for x, y, or z in the params file.")
+        return False
+
+def run_and_log(command, log_file):
+    with open(log_file, 'w') as log_file:
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        for line in process.stdout:
+            print(line, end='')  
+            log_file.write(line)  
+
+        for line in process.stderr:
+            print(line, end='', file=sys.stderr)  
+            log_file.write(line) 
+
+        process.wait()
+        log_file.write(f"Return code: {process.returncode}\n")
+
+
 
 if (not os.path.exists(os.path.join(gaden_launch_path,'gaden_sim_no_gui_launch.py')) ):
     with open('/projeto_final_simulation_scripts/gaden_sim_no_gui_launch.py', 'r') as file:
@@ -48,7 +118,14 @@ while True:
                 subprocess.run(['python3', "sanitize_and_move_simulations.py", simulation_path]) 
 
                 # corre o script do gaden para fazer o pre-processamento dos dados da simulação
-                subprocess.run(['ros2', 'launch', 'test_env', 'gaden_preproc_launch.py', f'scenario:={user+"_"+simulation_dir}'])
+                preprocessing_command = ['ros2', 'launch', 'test_env', 'gaden_preproc_launch.py', f'scenario:={user+"_"+simulation_dir}']
+                run_and_log(preprocessing_command, log_file_path)
+                if not extract_min_max(log_file_path,(os.path.join(user,simulation_dir))):
+                    print("está fora do espaço de simulação")
+                    # pede ao servidor para remover a simulação da queue
+                    #TODO: fazer o request para remover a simulação da queue
+                else:
+                    continue
 
                 # faz um POST request para atualizar o status da simulação para indicar que já está em simulação
                 updateStatusToInSimulation = requests.post('http://172.17.0.3:3000/setStatusToInSimulation', json={
