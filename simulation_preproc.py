@@ -66,9 +66,9 @@ def extract_min_max(log_file_path,simulation_dir):
         # se os valores de x, y e z pedidos pelo utilizador estão dentro do espaço de simulação
         # então retorna True, caso contrário retorna False
         if x_param > x_min and x_param < x_max and y_param > y_min and y_param < y_max and z_param > z_min and z_param < z_max:
-            return True
+            return True, x_min, x_max, y_min, y_max, z_min, z_max
         else:
-            return False
+            return False, x_min, x_max, y_min, y_max, z_min, z_max
     else:
         print("No matches found for x, y, or z in the params file.")
         return False
@@ -106,68 +106,85 @@ if (not os.path.exists(os.path.join(gaden_launch_path,'gaden_sim_no_gui_launch.p
 
 
 while True:
-    # se o evento for NONE (não existir) continua a execução do loop
-    for event in i.event_gen():
-        if event is None:
-            continue
-        # extrai a mask do evento
-        event_mask = event[1] 
-         
+    try:
+        # se o evento for NONE (não existir) continua a execução do loop
+        for event in i.event_gen():
+            if event is None:
+                continue
+            # extrai a mask do evento
+            event_mask = event[1] 
+            
 
-        # se alguma diretoria ou ficheiro for criado então executa o código
-        if 'IN_CREATE' in event_mask or 'IN_MODIFY' in event_mask:
-            # GET request para obter os dados da próxima simulação 
-            response = requests.get('http://172.17.0.3:3000/getFirstInQueue')
-            if response.status_code == 200:
-                data = response.json()
+            # se alguma diretoria ou ficheiro for criado então executa o código
+            if 'IN_CREATE' in event_mask or 'IN_MODIFY' in event_mask:
+                # GET request para obter os dados da próxima simulação 
+                response = requests.get('http://172.17.0.3:3000/getFirstInQueue')
+                if response.status_code == 200:
+                    data = response.json()
 
-                # extrai o user da resposta
-                user = (data.get('simulation')).split('_')[0]
-                # cria a diretoria com base na resposta 
-                simulation_dir = "sim_" +(data.get('simulation')).split('_')[1]
+                    # extrai o user da resposta
+                    user = (data.get('simulation')).split('_')[0]
+                    # cria a diretoria com base na resposta 
+                    simulation_dir = "sim_" +(data.get('simulation')).split('_')[1]
 
-                # cria a diretoria onde os dados da simulação vão ser guardados
-                simulation_path = os.path.join('/simulation_data',user,simulation_dir)
-                # corre o script que vai tratar e mover os dados da simulação para a diretoria onde ocorre a simulação
-                subprocess.run(['python3', "sanitize_and_move_simulations.py", simulation_path]) 
+                    # cria a diretoria onde os dados da simulação vão ser guardados
+                    simulation_path = os.path.join('/simulation_data',user,simulation_dir)
+                    # corre o script que vai tratar e mover os dados da simulação para a diretoria onde ocorre a simulação
+                    subprocess.run(['python3', "sanitize_and_move_simulations.py", simulation_path]) 
 
-                # corre o script do gaden para fazer o pre-processamento dos dados da simulação
-                preprocessing_command = ['ros2', 'launch', 'test_env', 'gaden_preproc_launch.py', f'scenario:={user+"_"+simulation_dir}']
-                run_and_log(preprocessing_command, log_file_path)
-                if not extract_min_max(log_file_path,(os.path.join(user,simulation_dir))):
-                    print("está fora do espaço de simulação")
-                    # pede ao servidor para remover a simulação da queue
-                    removeSimulation = requests.post('http://172.17.0.3:3000/plumeLocationOutOfBounds', json={
-                        'simulation': data.get('simulation'),
-                    }) 
+                    # corre o script do gaden para fazer o pre-processamento dos dados da simulação
+                    preprocessing_command = ['ros2', 'launch', 'test_env', 'gaden_preproc_launch.py', f'scenario:={user+"_"+simulation_dir}']
+                    run_and_log(preprocessing_command, log_file_path)
+                    
+                    is_inside_bounds, x_min, x_max, y_min, y_max, z_min, z_max = extract_min_max(log_file_path,(os.path.join(user,simulation_dir)))
 
-                    # remove a simulação 
-                    simulation_to_remove = os.path.join('/src/install/test_env/share/test_env/scenarios', f'{user}_{simulation_dir}')
-                    if os.path.exists(simulation_to_remove) and os.path.isdir(simulation_to_remove):
-                        try:
-                            # Remove the directory and all its contents recursively
-                            shutil.rmtree(simulation_to_remove)
-                            print(f"Successfully removed the simulation: {simulation_to_remove}")
-                        except Exception as e:
-                            print(f"Error while removing simulation: {e}")
+                    if not is_inside_bounds:
+                        print("está fora do espaço de simulação")
+                        print(x_min, x_max, y_min, y_max, z_min, z_max)
+                        # pede ao servidor para remover a simulação da queue
+                        removeSimulation = requests.post('http://172.17.0.3:3000/plumeLocationOutOfBounds', json={
+                            'simulation': data.get('simulation'),
+                            'x_min': x_min,
+                            'x_max': x_max,
+                            'y_min': y_min,
+                            'y_max': y_max,
+                            'z_min': z_min,
+                            'z_max': z_max,
+                        }) 
+
+                        # remove a simulação 
+                        simulation_to_remove = os.path.join('/src/install/test_env/share/test_env/scenarios', f'{user}_{simulation_dir}')
+                        if os.path.exists(simulation_to_remove) and os.path.isdir(simulation_to_remove):
+                            try:
+                                # Remove the directory and all its contents recursively
+                                shutil.rmtree(simulation_to_remove)
+                                print(f"Successfully removed the simulation: {simulation_to_remove}")
+                            except Exception as e:
+                                print(f"Error while removing simulation: {e}")
+                        else:
+                            print(f"The directory does not exist: {simulation_to_remove}")  
+
                     else:
-                        print(f"The directory does not exist: {simulation_to_remove}")  
+                        # faz um POST request para atualizar o status da simulação para indicar que já está em simulação
+                        updateStatusToInSimulation = requests.post('http://172.17.0.3:3000/setStatusToInSimulation', json={
+                            'simulation': data.get('simulation'),
+                        })
+                        
+                        # corre o script modificado de simulação do gaden para fazer a simulação mas sem GUI
+                        subprocess.run(['ros2', 'launch', 'test_env', 'gaden_sim_no_gui_launch.py', f'scenario:={user+"_"+simulation_dir}'])
+                        
 
-                else:
-                    # faz um POST request para atualizar o status da simulação para indicar que já está em simulação
-                    updateStatusToInSimulation = requests.post('http://172.17.0.3:3000/setStatusToInSimulation', json={
-                        'simulation': data.get('simulation'),
-                    })
-                    
-                    # corre o script modificado de simulação do gaden para fazer a simulação mas sem GUI
-                    subprocess.run(['ros2', 'launch', 'test_env', 'gaden_sim_no_gui_launch.py', f'scenario:={user+"_"+simulation_dir}'])
-                    
+                        subprocess.run(['python3', "simulation_visualizer.py", f'{user+"_"+simulation_dir}'])
 
-                    subprocess.run(['python3', "simulation_visualizer.py", f'{user+"_"+simulation_dir}'])
-
-                    # faz um POST request para atualizar o status da simulação para indicar que já está concluída
-                    updateStatusToDone = requests.post('http://172.17.0.3:3000/setStatusToDone', json={
-                        'simulation': data.get('simulation'),
-                    })
-        else:
-            continue
+                        # faz um POST request para atualizar o status da simulação para indicar que já está concluída
+                        updateStatusToDone = requests.post('http://172.17.0.3:3000/setStatusToDone', json={
+                            'simulation': data.get('simulation'),
+                        })
+            else:
+                continue
+    except inotify.calls.InotifyError as e:
+        print(f"[WARNING] Ignored inotify error: {e}")
+        continue
+    except Exception as e:
+        print(f"[ERROR] Unexpected error in inotify loop: {e}")
+        continue
