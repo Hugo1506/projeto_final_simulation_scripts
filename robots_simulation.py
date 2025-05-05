@@ -8,6 +8,7 @@ import zlib
 import os
 from gadentools.Simulation import Simulation
 from gadentools.Utils import Vector3
+from gadentools.Utils import block
 import requests
 import base64
 import sys
@@ -18,7 +19,7 @@ app = FastAPI()
 def test():
     vector3Up = Vector3(0, 0, 1)
     
-    scenario_path = os.path.join("/src/install/test_env/share/test_env/scenarios","new_sim_266")
+    scenario_path = os.path.join("/src/install/test_env/share/test_env/scenarios","new_sim_276")
     simulation_path = os.path.join(scenario_path,"gas_simulations/sim1")
     ocuppancy_path = os.path.join(scenario_path,"OccupancyGrid3D.csv")
 
@@ -26,6 +27,11 @@ def test():
 
     sim = Simulation(simulation_path, \
                     ocuppancy_path)
+
+    imageSizeFactor = 5  
+    max_ppm = 10.0
+    #TODO mudar 
+    height = 0.5 
 
     def markPreviousPositions(previousPositions, initialRobotPosition, image):
         for pos in previousPositions:
@@ -37,7 +43,7 @@ def test():
         i = int((initialRobotPosition.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
         image = cv2.circle(image, (i, j), 4, (255, 0, 0), -1)
 
-        return image
+        capture_frame_for_gif(image)
 
     def distanceFromSource(robotPosition):
         return (sim.source_position - robotPosition).magnitude()
@@ -81,8 +87,6 @@ def test():
         global frames 
         frames = []  
 
-        base_image = np.zeros((500, 500, 3), dtype=np.uint8)  
-
         while simulationTime < timeLimitSeconds and distanceFromSource(robotPosition) > 0.5:
             iteration = sim.getCurrentIteration()
 
@@ -108,9 +112,19 @@ def test():
             robotVelocity = changeVelocityForObstacles(robotPosition, robotVelocity, deltaTime)
             robotPosition += robotVelocity * deltaTime
 
-            base_image = markPreviousPositions(previousRobotPositions, initialRobotPosition, base_image)
+            map = sim.generateConcentrationMap2D(iteration, height, True)
+            map_scaled = map * (255.0 / max_ppm) 
+            formatted_map = np.array(np.clip(map_scaled, 0, 255), dtype=np.uint8)
 
-            capture_frame_for_gif(robotPosition, previousRobotPositions)
+            base_image = cv2.applyColorMap(formatted_map, cv2.COLORMAP_JET)
+
+            block(map, base_image)
+
+            newshape = (imageSizeFactor * base_image.shape[1], imageSizeFactor * base_image.shape[0])
+            heatmap = cv2.resize(base_image, newshape)
+            #rgb_image = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
+
+            markPreviousPositions(previousRobotPositions, initialRobotPosition, heatmap)
 
             simulationTime += deltaTime
             time.sleep(updateInterval)
@@ -122,28 +136,12 @@ def test():
 
         sim.stopPlaying()
 
-    def capture_frame_for_gif(robotPosition, previousRobotPositions):
-        """
-        Capture the current frame and add it to the list of frames.
-        """
-        iteration = sim.getCurrentIteration()
-        map = sim.generateConcentrationMap2D(iteration, robotPosition.z, True)
-        map_scaled = map * (255.0 / 10.0) 
-        formatted_map = np.array(np.clip(map_scaled, 0, 255), dtype=np.uint8)
-
-        heatmap = cv2.applyColorMap(formatted_map, cv2.COLORMAP_JET)
-
-        for pos in previousRobotPositions:
-            j = int((pos.x - sim.env_min.x) / (sim.env_max.x - sim.env_min.x) * heatmap.shape[0])
-            i = int((pos.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * heatmap.shape[1])
-            heatmap = cv2.circle(heatmap, (i, j), 2, (0, 0, 0), -1)
-
-        rgb_image = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
+    def capture_frame_for_gif(image):
+        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(rgb_image)
 
         frames.append(pil_img)
-        print(f"robotPosition: {robotPosition}, concentration: {sim.getCurrentConcentration(robotPosition)}")
-        print(f"Captured frame for iteration {iteration}")
+        print("Captured frame for GIF.")
 
     def save_gif_and_send():
         """
@@ -158,8 +156,8 @@ def test():
         compressed_gif = zlib.compress(gif_raw)
         compressed_gif_base64 = base64.b64encode(compressed_gif).decode('utf-8')
 
-        response = requests.post('http://172.17.0.3:3000/uploadSimulationResults', json={
-            'simulation': "new_266",  
+        response = requests.post('http://webserver:3000/uploadSimulationResults', json={
+            'simulation': "new_276",  
             'type': 'robot',
             'gif': compressed_gif_base64,
             'height': "0.5",

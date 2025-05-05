@@ -108,17 +108,19 @@ if (not os.path.exists(os.path.join(gaden_launch_path,'gaden_sim_no_gui_launch.p
 while True:
     try:
         # se o evento for NONE (não existir) continua a execução do loop
+        
         for event in i.event_gen():
             if event is None:
                 continue
             # extrai a mask do evento
             event_mask = event[1] 
+            print(event)
             
 
             # se alguma diretoria ou ficheiro for criado então executa o código
             if 'IN_CREATE' in event_mask or 'IN_MODIFY' in event_mask:
                 # GET request para obter os dados da próxima simulação 
-                response = requests.get('http://172.17.0.3:3000/getFirstInQueue')
+                response = requests.get('http://webserver:3000/getFirstInQueue')
                 if response.status_code == 200:
                     data = response.json()
 
@@ -142,7 +144,7 @@ while True:
                         print("está fora do espaço de simulação")
                         print(x_min, x_max, y_min, y_max, z_min, z_max)
                         # pede ao servidor para remover a simulação da queue
-                        removeSimulation = requests.post('http://172.17.0.3:3000/plumeLocationOutOfBounds', json={
+                        removeSimulation = requests.post('http://webserver:3000/plumeLocationOutOfBounds', json={
                             'simulation': data.get('simulation'),
                             'x_min': x_min,
                             'x_max': x_max,
@@ -166,7 +168,7 @@ while True:
 
                     else:
                         # faz um POST request para atualizar o status da simulação para indicar que já está em simulação
-                        updateStatusToInSimulation = requests.post('http://172.17.0.3:3000/setStatusToInSimulation', json={
+                        updateStatusToInSimulation = requests.post('http://webserver:3000/setStatusToInSimulation', json={
                             'simulation': data.get('simulation'),
                         })
                         
@@ -177,7 +179,7 @@ while True:
                         subprocess.run(['python3', "simulation_visualizer.py", f'{user+"_"+simulation_dir}'])
 
                         # faz um POST request para atualizar o status da simulação para indicar que já está concluída
-                        updateStatusToDone = requests.post('http://172.17.0.3:3000/setStatusToDone', json={
+                        updateStatusToDone = requests.post('http://webserver:3000/setStatusToDone', json={
                             'simulation': data.get('simulation'),
                         })
             else:

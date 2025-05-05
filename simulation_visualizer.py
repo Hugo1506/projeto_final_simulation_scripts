@@ -77,7 +77,7 @@ def save_heatmap_gifs(height):
 
     compressed_gif_base64 = base64.b64encode(compressed_gif).decode('utf-8')
 
-    response = requests.post('http://172.17.0.3:3000/uploadSimulationResults', json={
+    response = requests.post('http://webserver:3000/uploadSimulationResults', json={
         'simulation': simulation_name,
         'type': 'heatmap',
         'gif': compressed_gif_base64,
@@ -130,7 +130,7 @@ def save_wind_vector_field_gif(height):
     compressed_gif = zlib.compress(gif_raw)
     compressed_gif_base64 = base64.b64encode(compressed_gif).decode('utf-8')
 
-    response = requests.post('http://172.17.0.3:3000/uploadSimulationResults', json={
+    response = requests.post('http://webserver:3000/uploadSimulationResults', json={
         'simulation': simulation_name,
         'type': 'wind',
         'gif': compressed_gif_base64,
@@ -176,7 +176,7 @@ def save_contour_map_gif(height: float):
     compressed_gif = zlib.compress(gif_raw)
     compressed_gif_base64 = base64.b64encode(compressed_gif).decode('utf-8')
 
-    response = requests.post('http://172.17.0.3:3000/uploadSimulationResults', json={
+    response = requests.post('http://webserver:3000/uploadSimulationResults', json={
         'simulation': simulation_name,
         'type': 'contour',
         'gif': compressed_gif_base64,
