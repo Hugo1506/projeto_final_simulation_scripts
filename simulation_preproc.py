@@ -113,9 +113,7 @@ while True:
             if event is None:
                 continue
             # extrai a mask do evento
-            event_mask = event[1] 
-            print(event)
-            
+            event_mask = event[1]             
 
             # se alguma diretoria ou ficheiro for criado então executa o código
             if 'IN_CREATE' in event_mask or 'IN_MODIFY' in event_mask:
