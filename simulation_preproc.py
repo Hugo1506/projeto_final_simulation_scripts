@@ -4,6 +4,8 @@ import subprocess
 import inotify.adapters
 import re
 import shutil
+import signal
+import atexit
 
 # vai monitorar todos os eventos que ocorren no directoria /simulation_data e às suas subdiretorias
 i = inotify.adapters.InotifyTree('/simulation_data/')
@@ -16,6 +18,23 @@ log_file_path = '/projeto_final_simulation_scripts/simulation.log'
 x_min, x_max = None, None
 y_min, y_max = None, None
 z_min, z_max = None, None
+
+# inicia o servidor FastAPI 
+fastapi_process = subprocess.Popen(
+    ['fastapi', 'run', 'robots_simulation.py'],
+    preexec_fn=os.setsid 
+)
+
+# funcção para parar o servidor FastAPI quando o script termina
+def cleanup():
+    try:
+        os.killpg(os.getpgid(fastapi_process.pid), signal.SIGKILL)
+        print("FastAPI server stopped.")
+    except Exception as e:
+        print(f"Error stopping FastAPI server: {e}")
+
+# quando o script termina, a função cleanup é chamada para parar o servidor FastAPI
+atexit.register(cleanup)
 
 
 # verifica se a localização da pluma está dentro do espaço de simulação

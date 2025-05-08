@@ -176,9 +176,6 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
         print(f"Captured frame for GIF in iteration: {iteration}.")
 
     def save_gif_and_send():
-        """
-        Save the collected frames as a GIF locally and send it via POST request.
-        """
         gif_filename = "simulation_result.gif"
 
         gif_io = io.BytesIO()
