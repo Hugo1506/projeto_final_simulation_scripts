@@ -191,8 +191,12 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
             'gif': compressed_gif_base64,
             'height': height,
         })
-
-        print("GIF sent successfully.")
+        global id 
+        if response.status_code == 200:
+            print("GIF sent successfully.")
+            id = response.json().get('id')
+        else:
+            print(f"Failed to send GIF. Status code: {response.status_code}")
 
     surge_cast()
 
@@ -205,4 +209,4 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
             "wind_speed": vector3_to_dict(frame["wind_speed"]),
         })
 
-    return JSONResponse(content={"frames": simulation_data_serializable})
+    return JSONResponse(content={"frames": simulation_data_serializable, "id": id})
