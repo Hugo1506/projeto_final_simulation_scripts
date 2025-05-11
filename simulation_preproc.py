@@ -38,14 +38,10 @@ atexit.register(cleanup)
 
 
 # verifica se a localização da pluma está dentro do espaço de simulação
-def extract_min_max(log_file_path,simulation_dir):
-    params_path = os.path.join("/simulation_data/",simulation_dir,"params/gaden_params.yaml")
+def extract_min_max(log_file_path):
 
     with open(log_file_path, 'r', encoding='utf-8') as file:
         log_content = file.read()
-
-    with open(params_path, 'r', encoding='utf-8') as file:
-        params_content = file.read()
 
     # regex para extrair os valores de x, y e z do log
     x_pattern = re.compile(r'x\s*:\s*\(([-\d.]+),\s*([-\d.]+)\)')
@@ -66,31 +62,8 @@ def extract_min_max(log_file_path,simulation_dir):
     else:
         print("No matches found for x, y, or z in the log file.")
     
-    # regex para extrair os valores de x, y e z pedidos pelo utilizador
-    x_param_pattern = re.compile(r'source_position_x\s*:\s*\'?([-.\d]+)\'?')
-    y_param_pattern = re.compile(r'source_position_y\s*:\s*\'?([-.\d]+)\'?')
-    z_param_pattern = re.compile(r'source_position_z\s*:\s*\'?([-.\d]+)\'?')
 
-    # procura os valores de x, y e z no ficheiro params
-    x_param_match = x_param_pattern.search(params_content)
-    y_param_match = y_param_pattern.search(params_content)
-    z_param_match = z_param_pattern.search(params_content)
-
-    # guarda os valores de x, y e z
-    if x_param_match and y_param_match and z_param_match:
-        x_param = float(x_param_match.group(1))
-        y_param = float(y_param_match.group(1))
-        z_param = float(z_param_match.group(1))
-
-        # se os valores de x, y e z pedidos pelo utilizador estão dentro do espaço de simulação
-        # então retorna True, caso contrário retorna False
-        if x_param > x_min and x_param < x_max and y_param > y_min and y_param < y_max and z_param > z_min and z_param < z_max:
-            return True, x_min, x_max, y_min, y_max, z_min, z_max
-        else:
-            return False, x_min, x_max, y_min, y_max, z_min, z_max
-    else:
-        print("No matches found for x, y, or z in the params file.")
-        return False
+    return x_min, x_max, y_min, y_max, z_min, z_max
 
 # corre um comando e guarda o output num ficheiro de log
 def run_and_log(command, log_file):
@@ -155,13 +128,8 @@ while True:
                     preprocessing_command = ['ros2', 'launch', 'test_env', 'gaden_preproc_launch.py', f'scenario:={user+"_"+simulation_dir}']
                     run_and_log(preprocessing_command, log_file_path)
                     
-                    is_inside_bounds, x_min, x_max, y_min, y_max, z_min, z_max = extract_min_max(log_file_path,(os.path.join(user,simulation_dir)))
-
-                    if not is_inside_bounds:
-                        print("está fora do espaço de simulação")
-                        print(x_min, x_max, y_min, y_max, z_min, z_max)
-                        # pede ao servidor para remover a simulação da queue
-                        removeSimulation = requests.post('http://webserver:3000/plumeLocationOutOfBounds', json={
+                    x_min, x_max, y_min, y_max, z_min, z_max = extract_min_max(log_file_path)
+                    setBounds = requests.post('http://webserver:3000/setBounds', json={
                             'simulation': data.get('simulation'),
                             'x_min': x_min,
                             'x_max': x_max,
@@ -169,36 +137,23 @@ while True:
                             'y_max': y_max,
                             'z_min': z_min,
                             'z_max': z_max,
-                        }) 
+                    }) 
+                    
+                    # faz um POST request para atualizar o status da simulação para indicar que já está em simulação
+                    updateStatusToInSimulation = requests.post('http://webserver:3000/setStatusToInSimulation', json={
+                        'simulation': data.get('simulation'),
+                    })
+                    
+                    # corre o script modificado de simulação do gaden para fazer a simulação mas sem GUI
+                    subprocess.run(['ros2', 'launch', 'test_env', 'gaden_sim_no_gui_launch.py', f'scenario:={user+"_"+simulation_dir}'])
+                    
 
-                        # remove a simulação 
-                        simulation_to_remove = os.path.join('/src/install/test_env/share/test_env/scenarios', f'{user}_{simulation_dir}')
-                        if os.path.exists(simulation_to_remove) and os.path.isdir(simulation_to_remove):
-                            try:
-                                # Remove the directory and all its contents recursively
-                                shutil.rmtree(simulation_to_remove)
-                                print(f"Successfully removed the simulation: {simulation_to_remove}")
-                            except Exception as e:
-                                print(f"Error while removing simulation: {e}")
-                        else:
-                            print(f"The directory does not exist: {simulation_to_remove}")  
+                    subprocess.run(['python3', "simulation_visualizer.py", f'{user+"_"+simulation_dir}'])
 
-                    else:
-                        # faz um POST request para atualizar o status da simulação para indicar que já está em simulação
-                        updateStatusToInSimulation = requests.post('http://webserver:3000/setStatusToInSimulation', json={
-                            'simulation': data.get('simulation'),
-                        })
-                        
-                        # corre o script modificado de simulação do gaden para fazer a simulação mas sem GUI
-                        subprocess.run(['ros2', 'launch', 'test_env', 'gaden_sim_no_gui_launch.py', f'scenario:={user+"_"+simulation_dir}'])
-                        
-
-                        subprocess.run(['python3', "simulation_visualizer.py", f'{user+"_"+simulation_dir}'])
-
-                        # faz um POST request para atualizar o status da simulação para indicar que já está concluída
-                        updateStatusToDone = requests.post('http://webserver:3000/setStatusToDone', json={
-                            'simulation': data.get('simulation'),
-                        })
+                    # faz um POST request para atualizar o status da simulação para indicar que já está concluída
+                    updateStatusToDone = requests.post('http://webserver:3000/setStatusToDone', json={
+                        'simulation': data.get('simulation'),
+                    })
             else:
                 continue
     except inotify.calls.InotifyError as e:
