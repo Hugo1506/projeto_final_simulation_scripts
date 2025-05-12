@@ -2,9 +2,11 @@ from fastapi import FastAPI
 import numpy as np
 import cv2
 import time
+import subprocess
 from PIL import Image
 import io
 import zlib
+import yaml
 import os
 from gadentools.Simulation import Simulation
 from gadentools.Utils import Vector3
@@ -16,7 +18,41 @@ import sys
 
 app = FastAPI()
 
-@app.get("/")
+
+
+@app.get("/set_plume_location")
+def set_plume_location(username: str, simulationNumber: str, plumeXlocation: float, plumeYlocation: float, plumeZlocation: float):
+    simulation_dir = username + "_sim_" + simulationNumber
+    simulation = username + "_" + simulationNumber
+    scenario_path = os.path.join("/src/install/test_env/share/test_env/scenarios",simulation_dir)
+
+    gaden_params_file = os.path.join(scenario_path, 'params', 'gaden_params.yaml')
+
+    with open(gaden_params_file, 'r') as file:
+        gaden_params = yaml.safe_load(file)
+
+    # faz update com os novos valores de localização do pluma
+    gaden_params['gaden_filament_simulator']['ros__parameters']['source_position_x'] = plumeXlocation
+    gaden_params['gaden_filament_simulator']['ros__parameters']['source_position_y'] = plumeYlocation
+    gaden_params['gaden_filament_simulator']['ros__parameters']['source_position_z'] = plumeZlocation
+
+    with open(gaden_params_file, 'w') as file:
+        yaml.dump(gaden_params, file, width=1000)
+
+    # corre o script modificado de simulação do gaden para fazer a simulação mas sem GUI
+    subprocess.run(['ros2', 'launch', 'test_env', 'gaden_sim_no_gui_launch.py', f'scenario:={simulation_dir}'])
+    
+
+    subprocess.run(['python3', "simulation_visualizer.py", f'{simulation_dir}'])
+
+    # faz um POST request para atualizar o status da simulação para indicar que já está concluída
+    updateStatusToDone = requests.post('http://webserver:3000/setStatusToDone', json={
+        'simulation': simulation,
+    })
+
+    return JSONResponse(content={"message": "Plume location set successfully."})
+
+@app.get("/robot_simulation")
 def robot_simulation(username: str, simulationNumber: str, height: float, robotSpeed: float, robotXposition: float, robotYposition: float):
     vector3Up = Vector3(0, 0, 1)
     initialRobotPosition = Vector3(robotXposition,robotYposition, height)

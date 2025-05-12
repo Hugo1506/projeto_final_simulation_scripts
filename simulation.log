@@ -1,36 +1,38 @@
-[INFO] [launch]: All log files can be found below /root/.ros/log/2025-05-11-12-51-42-011483-4fc60edca8cf-3337
+[INFO] [launch]: All log files can be found below /root/.ros/log/2025-05-12-14-21-27-021072-4fc60edca8cf-2482
 [INFO] [launch]: Default logging verbosity is set to INFO
-[INFO] [preprocessing-1]: process started with pid [3338]
-[preprocessing-1] [0m[INFO] [1746967902.698882167] [GADEN]: Number of models: 2[0m
-[preprocessing-1] [0m[INFO] [1746967902.704374543] [GADEN]: Dimensions are:
+[INFO] [preprocessing-1]: process started with pid [2483]
+[preprocessing-1] [0m[INFO] [1747059687.163933768] [GADEN]: Number of models: 2[0m
+[preprocessing-1] [0m[INFO] [1747059687.164175643] [GADEN]: Dimensions are:
 [preprocessing-1] 	x : (0, 5)
 [preprocessing-1] 	y : (0, 4)
 [preprocessing-1] 	z : (0, 2.5)
 [preprocessing-1] [0m
-[preprocessing-1] [0m[INFO] [1746967902.705487411] [GADEN]: Dimensions are:
+[preprocessing-1] [0m[INFO] [1747059687.164351750] [GADEN]: Dimensions are:
 [preprocessing-1] 	x : (-0.2, 10.2)
 [preprocessing-1] 	y : (-0.2, 6.2)
 [preprocessing-1] 	z : (0, 2.5)
 [preprocessing-1] [0m
-[preprocessing-1] [0m[INFO] [1746967902.744199518] [GADEN]: Parsing environment model: /src/install/test_env/share/test_env/scenarios/new_sim_287/cad_models/new_287_ff38b39d21fc2954.stl[0m
-[preprocessing-1] [0m[INFO] [1746967902.756445122] [GADEN]: 16%[0m
-[preprocessing-1] [0m[INFO] [1746967902.756812312] [GADEN]: 75%[0m
-[preprocessing-1] [0m[INFO] [1746967902.757237606] [GADEN]: 91%[0m
-[preprocessing-1] [0m[INFO] [1746967902.759129347] [GADEN]: 25%[0m
-[preprocessing-1] [0m[INFO] [1746967902.760398880] [GADEN]: 41%[0m
-[preprocessing-1] [0m[INFO] [1746967902.762588104] [GADEN]: 58%[0m
-[preprocessing-1] [0m[INFO] [1746967902.762713184] [GADEN]: Parsing environment model: /src/install/test_env/share/test_env/scenarios/new_sim_287/cad_models/new_287_b4ca5950e80815c4.stl[0m
-[preprocessing-1] [0m[INFO] [1746967902.766389821] [GADEN]: 75%[0m
-[preprocessing-1] [0m[INFO] [1746967902.768819887] [GADEN]: 85%[0m
-[preprocessing-1] [0m[INFO] [1746967902.768887202] [GADEN]: 96%[0m
-[preprocessing-1] [0m[INFO] [1746967902.770877753] [GADEN]: Number of outlet models: 2[0m
-[preprocessing-1] [0m[INFO] [1746967902.771605972] [GADEN]: Parsing outlet model: /src/install/test_env/share/test_env/scenarios/new_sim_287/cad_models/new_287_85ee075d900fcb97.stl[0m
-[preprocessing-1] [0m[INFO] [1746967902.772710151] [GADEN]: 75%[0m
-[preprocessing-1] [0m[INFO] [1746967902.772864153] [GADEN]: 91%[0m
-[preprocessing-1] [0m[INFO] [1746967902.774792879] [GADEN]: Parsing outlet model: /src/install/test_env/share/test_env/scenarios/new_sim_287/cad_models/new_287_1a8b463283f628d1.stl[0m
-[preprocessing-1] [0m[INFO] [1746967902.776148329] [GADEN]: 75%[0m
-[preprocessing-1] [0m[INFO] [1746967902.776271839] [GADEN]: 91%[0m
-[preprocessing-1] [0m[INFO] [1746967903.382911963] [GADEN]: [34mWriting output to folder '/src/install/test_env/share/test_env/scenarios/new_sim_287'[0m[0m
-[preprocessing-1] [0m[INFO] [1746967903.412856633] [GADEN]: [34mPreprocessing done[0m[0m
-[INFO] [preprocessing-1]: process has finished cleanly [pid 3338]
+[preprocessing-1] [0m[INFO] [1747059687.164619568] [GADEN]: Parsing environment model: /src/install/test_env/share/test_env/scenarios/new_sim_320/cad_models/new_320_b24d247c52ef2aeb.stl[0m
+[preprocessing-1] [0m[INFO] [1747059687.166375216] [GADEN]: 16%[0m
+[preprocessing-1] [0m[INFO] [1747059687.166693538] [GADEN]: 33%[0m
+[preprocessing-1] [0m[INFO] [1747059687.168880197] [GADEN]: 75%[0m
+[preprocessing-1] [0m[INFO] [1747059687.169104205] [GADEN]: 91%[0m
+[preprocessing-1] [0m[INFO] [1747059687.170203311] [GADEN]: Parsing environment model: /src/install/test_env/share/test_env/scenarios/new_sim_320/cad_models/new_320_6fee245764714dc7.stl[0m
+[preprocessing-1] [0m[INFO] [1747059687.177135069] [GADEN]: 50%[0m
+[preprocessing-1] [0m[INFO] [1747059687.177366331] [GADEN]: 75%[0m
+[preprocessing-1] [0m[INFO] [1747059687.180688665] [GADEN]: 85%[0m
+[preprocessing-1] [0m[INFO] [1747059687.181425758] [GADEN]: 96%[0m
+[preprocessing-1] [0m[INFO] [1747059687.182257155] [GADEN]: Number of outlet models: 2[0m
+[preprocessing-1] [0m[INFO] [1747059687.182904828] [GADEN]: Parsing outlet model: /src/install/test_env/share/test_env/scenarios/new_sim_320/cad_models/new_320_097df13445637a2a.stl[0m
+[preprocessing-1] [0m[INFO] [1747059687.183409532] [GADEN]: 25%[0m
+[preprocessing-1] [0m[INFO] [1747059687.183529595] [GADEN]: 41%[0m
+[preprocessing-1] [0m[INFO] [1747059687.183620847] [GADEN]: 75%[0m
+[preprocessing-1] [0m[INFO] [1747059687.183731365] [GADEN]: 91%[0m
+[preprocessing-1] [0m[INFO] [1747059687.185352311] [GADEN]: Parsing outlet model: /src/install/test_env/share/test_env/scenarios/new_sim_320/cad_models/new_320_dd74842d507efbae.stl[0m
+[preprocessing-1] [0m[INFO] [1747059687.186213748] [GADEN]: 50%[0m
+[preprocessing-1] [0m[INFO] [1747059687.186308548] [GADEN]: 75%[0m
+[preprocessing-1] [0m[INFO] [1747059687.186538669] [GADEN]: 91%[0m
+[preprocessing-1] [0m[INFO] [1747059687.554261811] [GADEN]: [34mWriting output to folder '/src/install/test_env/share/test_env/scenarios/new_sim_320'[0m[0m
+[preprocessing-1] [0m[INFO] [1747059687.570564775] [GADEN]: [34mPreprocessing done[0m[0m
+[INFO] [preprocessing-1]: process has finished cleanly [pid 2483]
 Return code: 0

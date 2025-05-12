@@ -143,17 +143,6 @@ while True:
                     updateStatusToInSimulation = requests.post('http://webserver:3000/setStatusToInSimulation', json={
                         'simulation': data.get('simulation'),
                     })
-                    
-                    # corre o script modificado de simulação do gaden para fazer a simulação mas sem GUI
-                    subprocess.run(['ros2', 'launch', 'test_env', 'gaden_sim_no_gui_launch.py', f'scenario:={user+"_"+simulation_dir}'])
-                    
-
-                    subprocess.run(['python3', "simulation_visualizer.py", f'{user+"_"+simulation_dir}'])
-
-                    # faz um POST request para atualizar o status da simulação para indicar que já está concluída
-                    updateStatusToDone = requests.post('http://webserver:3000/setStatusToDone', json={
-                        'simulation': data.get('simulation'),
-                    })
             else:
                 continue
     except inotify.calls.InotifyError as e:
