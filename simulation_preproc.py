@@ -39,31 +39,33 @@ atexit.register(cleanup)
 
 # verifica se a localização da pluma está dentro do espaço de simulação
 def extract_min_max(log_file_path):
-
     with open(log_file_path, 'r', encoding='utf-8') as file:
         log_content = file.read()
 
-    # regex para extrair os valores de x, y e z do log
     x_pattern = re.compile(r'x\s*:\s*\(([-\d.]+),\s*([-\d.]+)\)')
     y_pattern = re.compile(r'y\s*:\s*\(([-\d.]+),\s*([-\d.]+)\)')
-    z_pattern = re.compile(r'z\s*:\s*\(([-\d.]+),\s*([-\d.]+)\)')   
+    z_pattern = re.compile(r'z\s*:\s*\(([-\d.]+),\s*([-\d.]+)\)')
 
-    # procura os valores de x, y e z no log
-    x_match = x_pattern.search(log_content)
-    y_match = y_pattern.search(log_content)
-    z_match = z_pattern.search(log_content)
+    x_matches = x_pattern.findall(log_content)
+    y_matches = y_pattern.findall(log_content)
+    z_matches = z_pattern.findall(log_content)
 
-    # guarda os valores máximos e mínimos de x, y e z 
-    if x_match and y_match and z_match:
-        x_min, x_max = float(x_match.group(1)), float(x_match.group(2))
-        y_min, y_max = float(y_match.group(1)), float(y_match.group(2))
-        z_min, z_max = float(z_match.group(1)), float(z_match.group(2))
+    def get_match(matches):
+        if len(matches) >= 2:
+            return float(matches[1][0]), float(matches[1][1])
+        elif len(matches) == 1:
+            return float(matches[0][0]), float(matches[0][1])
+        else:
+            raise ValueError("Coordinate not found in log file.")
 
-    else:
-        print("No matches found for x, y, or z in the log file.")
-    
-
-    return x_min, x_max, y_min, y_max, z_min, z_max
+    try:
+        x_min, x_max = get_match(x_matches)
+        y_min, y_max = get_match(y_matches)
+        z_min, z_max = get_match(z_matches)
+        return x_min, x_max, y_min, y_max, z_min, z_max
+    except ValueError as e:
+        print(f"Error: {e}")
+        return None
 
 # corre um comando e guarda o output num ficheiro de log
 def run_and_log(command, log_file):
