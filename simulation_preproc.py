@@ -108,9 +108,10 @@ while True:
                 continue
             # extrai a mask do evento
             event_mask = event[1]             
-
             # se alguma diretoria ou ficheiro for criado então executa o código
             if 'IN_CREATE' in event_mask or 'IN_MODIFY' in event_mask:
+                
+                print("preprocessing simulation")
                 # GET request para obter os dados da próxima simulação 
                 response = requests.get('http://webserver:3000/getFirstInQueue')
                 if response.status_code == 200:
