@@ -18,7 +18,40 @@ import sys
 
 app = FastAPI()
 
+def publish_ros_data(position, concentration, wind):
 
+    try:
+        subprocess.run([
+            'ros2', 'topic', 'pub', '--once', '/robot_position',
+            'geometry_msgs/msg/Point',
+            f"{{x: {position.x}, y: {position.y}, z: {position.z}}}"
+        ], capture_output=True, text=True)
+        print(f"Published robot_position: {result.stdout}")
+        print(f"Error (if any): {result.stderr}")
+    except Exception as e:
+        print(f"Error publishing robot_position: {e}")
+
+    try:
+        subprocess.run([
+            'ros2', 'topic', 'pub', '--once', '/concentration',
+            'std_msgs/msg/Float32',
+            f"{{data: {concentration}}}"
+        ], capture_output=True, text=True)
+        print(f"Published concentration: {result.stdout}")
+        print(f"Error (if any): {result.stderr}")
+    except Exception as e:
+        print(f"Error publishing concentration: {e}")
+
+    try:
+        subprocess.run([
+            'ros2', 'topic', 'pub', '--once', '/wind_speed',
+            'geometry_msgs/msg/Vector3',
+            f"{{x: {wind.x}, y: {wind.y}, z: {wind.z}}}"
+        ], capture_output=True, text=True)
+        print(f"Published wind_speed: {result.stdout}")
+        print(f"Error (if any): {result.stderr}")
+    except Exception as e:
+        print(f"Error publishing wind_speed: {e}")
 
 @app.get("/set_plume_location")
 def set_plume_location(username: str, simulationNumber: str, plumeXlocation: float, plumeYlocation: float, plumeZlocation: float):
@@ -189,6 +222,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
 
             markPreviousPositions(previousRobotPositions, initialRobotPosition, heatmap)
 
+            #publish_ros_data(robotPosition, concentration, sim.getCurrentWind(robotPosition))
             capture_simulation_data(robotPosition, concentration, sim.getCurrentWind(robotPosition))
             simulationTime += deltaTime
             time.sleep(updateInterval)
