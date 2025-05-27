@@ -150,7 +150,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
         return robotVelocity
 
     def surge_cast():
-        updateInterval = 0.5
+        updateInterval = 0.05 # segundos
         sim.playSimulation(0, updateInterval)
         robotPosition = initialRobotPosition
         hitThreshold = 0.2
@@ -231,7 +231,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
             print("Success! The robot reached the source.")
         else:
             print(f"Failed to reach the source. Final distance: {distanceFromSource(robotPosition)}")
-
+        
         save_gif_and_send()
         sim.stopPlaying()
 

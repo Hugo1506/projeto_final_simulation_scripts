@@ -147,7 +147,9 @@ while True:
                         'simulation': data.get('simulation'),
                     })
             else:
+                print(response.status_code)
                 continue
+               
     except inotify.calls.InotifyError as e:
         print(f"[WARNING] Ignored inotify error: {e}")
         continue

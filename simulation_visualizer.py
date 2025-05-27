@@ -27,26 +27,27 @@ sim = Simulation(simulation_path, \
 arrowLength = 10
 spaceBetweenArrows = 5
 maxHeight = sim.env_max.z
-timeLimitSeconds = 15       
+timeLimitSeconds = 30   
 minHeight = sim.env_min.z              
 max_ppm = 10.0                 
 imageSizeFactor = 5          
 frame_duration_ms = 50  
 contour_threshold = 40      
+timePerIteration = 0.1
 
 frames = []
 
-def save_heatmap_gifs(height):
+
+def save_heatmaps(height):
     frames.clear()
-    sim.playSimulation(0, 0.5)
+    sim.playSimulation(0, timePerIteration)
     time_start = time.time()
-    gif_io = io.BytesIO()
     iteration_counter = 0
 
     while (time.time() - time_start) < timeLimitSeconds:
         clear_output(wait=True)
         iteration = sim.getCurrentIteration()
-        
+
         if iteration == iteration_counter:
             iteration_counter += 1
             map = sim.generateConcentrationMap2D(iteration, height, True)
@@ -62,27 +63,28 @@ def save_heatmap_gifs(height):
 
             rgb_image = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
             pil_img = Image.fromarray(rgb_image)
-            frames.append(pil_img)
+
+            buffered = io.BytesIO()
+            pil_img.save(buffered, format="PNG") 
+            compressed = zlib.compress(buffered.getvalue())
+            img_str = base64.b64encode(compressed).decode('utf-8')
 
             print(f"Captured frame for iteration {iteration}")
 
+            response = requests.post('http://webserver:3000/uploadSimulationResults', json={
+                'simulation': simulation_name,
+                'type': 'heatmap',
+                'gif': img_str,
+                'height': height,
+                'iteration': str(iteration)
+            })
+
+            if response.status_code != 200:
+                print(f"Failed to upload: {response.status_code}, {response.text}")
+
     sim.stopPlaying()
 
-    gif_io = io.BytesIO()
-    frames[0].save(gif_io, format='GIF', save_all=True, append_images=frames[1:], duration=frame_duration_ms, loop=0)
 
-    gif_raw = gif_io.getvalue()
-
-    compressed_gif = zlib.compress(gif_raw)
-
-    compressed_gif_base64 = base64.b64encode(compressed_gif).decode('utf-8')
-
-    response = requests.post('http://webserver:3000/uploadSimulationResults', json={
-        'simulation': simulation_name,
-        'type': 'heatmap',
-        'gif': compressed_gif_base64,
-        'height': height,
-    })
     
 def save_wind_vector_field_gif(height):
     frames.clear()
@@ -135,6 +137,7 @@ def save_wind_vector_field_gif(height):
         'type': 'wind',
         'gif': compressed_gif_base64,
         'height': height,
+        'iteration': "1"
     })
 
 def save_contour_map_gif(height: float):
@@ -181,10 +184,11 @@ def save_contour_map_gif(height: float):
         'type': 'contour',
         'gif': compressed_gif_base64,
         'height': height,
+        'iteration': "1"
     })
 
 
 for height in numpy.arange(minHeight, maxHeight, 0.5):
-  save_heatmap_gifs(height)
-  save_wind_vector_field_gif(height)
-  save_contour_map_gif(height)
+  save_heatmaps(height)
+ # save_wind_vector_field_gif(height)
+ # save_contour_map_gif(height)
