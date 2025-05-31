@@ -80,7 +80,7 @@ def save_heatmaps(height):
                 'type': 'heatmap',
                 'gif': img_str,
                 'height': height,
-                'iteration': str(sim_heatmap.getCurrentIteration())
+                'iteration': current_iteration
             })
 
             if response.status_code != 200:
@@ -142,7 +142,7 @@ def save_wind_vector_field(height):
                 'type': 'wind',
                 'gif': img_str,
                 'height': height,
-                'iteration': str(sim_wind.getCurrentIteration())
+                'iteration': current_iteration
             })
 
             if response.status_code != 200:
@@ -196,7 +196,7 @@ def save_contour_map(height: float):
                 'type': 'contour',
                 'gif': img_str,
                 'height': height,
-                'iteration': str(sim_contour.getCurrentIteration())
+                'iteration': current_iteration
             })
             if response.status_code != 200:
                 print(f"Failed to upload: {response.status_code}, {response.text}")
