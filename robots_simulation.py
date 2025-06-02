@@ -18,40 +18,7 @@ import sys
 
 app = FastAPI()
 
-def publish_ros_data(position, concentration, wind):
 
-    try:
-        subprocess.run([
-            'ros2', 'topic', 'pub', '--once', '/robot_position',
-            'geometry_msgs/msg/Point',
-            f"{{x: {position.x}, y: {position.y}, z: {position.z}}}"
-        ], capture_output=True, text=True)
-        print(f"Published robot_position: {result.stdout}")
-        print(f"Error (if any): {result.stderr}")
-    except Exception as e:
-        print(f"Error publishing robot_position: {e}")
-
-    try:
-        subprocess.run([
-            'ros2', 'topic', 'pub', '--once', '/concentration',
-            'std_msgs/msg/Float32',
-            f"{{data: {concentration}}}"
-        ], capture_output=True, text=True)
-        print(f"Published concentration: {result.stdout}")
-        print(f"Error (if any): {result.stderr}")
-    except Exception as e:
-        print(f"Error publishing concentration: {e}")
-
-    try:
-        subprocess.run([
-            'ros2', 'topic', 'pub', '--once', '/wind_speed',
-            'geometry_msgs/msg/Vector3',
-            f"{{x: {wind.x}, y: {wind.y}, z: {wind.z}}}"
-        ], capture_output=True, text=True)
-        print(f"Published wind_speed: {result.stdout}")
-        print(f"Error (if any): {result.stderr}")
-    except Exception as e:
-        print(f"Error publishing wind_speed: {e}")
 
 @app.get("/set_plume_location")
 def set_plume_location(username: str, simulationNumber: str, plumeXlocation: float, plumeYlocation: float, plumeZlocation: float):
@@ -89,6 +56,17 @@ def set_plume_location(username: str, simulationNumber: str, plumeXlocation: flo
 def robot_simulation(username: str, simulationNumber: str, height: float, robotSpeed: float, robotXposition: float, robotYposition: float):
     vector3Up = Vector3(0, 0, 1)
     initialRobotPosition = Vector3(robotXposition,robotYposition, height)
+    finalRobotPosition = Vector3(8.0, 2.5, height)
+
+    v1 = np.array([initialRobotPosition.x, initialRobotPosition.y, initialRobotPosition.z])
+    v2 = np.array([finalRobotPosition.x, finalRobotPosition.y, finalRobotPosition.z])
+    dot_product = np.dot(v1, v2)
+
+    normInitialRobotPosition = np.linalg.norm(v1)
+    normFinalRobotPosition = np.linalg.norm(v2)
+
+    angle = np.arccos(dot_product / (normInitialRobotPosition * normFinalRobotPosition))
+    print(f"Angle between initial and final robot position: {angle}")
 
     simulation_dir = username + "_sim_" + simulationNumber
     scenario_path = os.path.join("/src/install/test_env/share/test_env/scenarios",simulation_dir)
@@ -129,144 +107,103 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
 
         capture_frame_for_gif(image)
 
-    def distanceFromSource(robotPosition):
-        return (sim.source_position - robotPosition).magnitude()
-
-    def changeVelocityForObstacles(robotPosition, robotVelocity, deltaTime):
-        originalVelocity = robotVelocity
-
-        newRobotPosition = robotPosition + robotVelocity * deltaTime
-        if not sim.checkPositionForObstacles(newRobotPosition):
-            robotVelocity = originalVelocity.cross(vector3Up).normalized() * originalVelocity.magnitude()
-        newRobotPosition = robotPosition + robotVelocity * deltaTime
-
-        if not sim.checkPositionForObstacles(newRobotPosition):
-            robotVelocity = -originalVelocity.cross(vector3Up).normalized() * originalVelocity.magnitude()
-        newRobotPosition = robotPosition + robotVelocity * deltaTime
-
-        if not sim.checkPositionForObstacles(newRobotPosition):
-            robotVelocity = -originalVelocity
-
-        return robotVelocity
+    def distance_from_target(robotPosition, finalPosition):
+        return np.sqrt((robotPosition.x - finalPosition.x) ** 2 + (robotPosition.y - finalPosition.y) ** 2)
 
     def surge_cast():
-        updateInterval = 0.05 # segundos
+        updateInterval = 0.5 # segundos
         sim.playSimulation(0, updateInterval)
         robotPosition = initialRobotPosition
-        hitThreshold = 0.2
 
-        cast_timer = 0
-        castDirectionMultiplier = 1
-        baseCastLength = 0.2
-        currentCastLength = baseCastLength
+        last_iteration = -1
 
         previousRobotPositions = []
 
-        simulationTime = 0
-        deltaTime = 0.1
-        timeLimitSeconds = 100
+  
 
         global frames
         frames = []
 
-        lastHigh = None
-        lastHighConc = 0.0
-        found_high_point = False
+        while sim.getCurrentIteration() != 0:
+            time.sleep(0.01)
 
-        low_conc_threshold = 0.01
-        time_to_try_return = 5
-
-        while simulationTime < timeLimitSeconds and distanceFromSource(robotPosition) > 0.5:
+        while robotPosition != finalRobotPosition:
             iteration = sim.getCurrentIteration()
 
-            if not sim.checkPositionForObstacles(robotPosition):
-                print("Something went wrong! The robot is in a wall!")
+            if iteration >= 30:
+                print("Something went wrong!")
                 break
+            
+            if iteration >= last_iteration:
+                last_iteration = last_iteration + 1
+                previousRobotPositions.append(robotPosition)
 
-            previousRobotPositions.append(robotPosition)
+                concentration = sim.getCurrentConcentration(robotPosition)
+                print(f"Location: {robotPosition}")
+                print(f"Concentration at robot position: {concentration} ppm")
 
-            concentration = sim.getCurrentConcentration(robotPosition)
-            print(f"Concentration at robot position: {concentration} ppm")
+                
+                robotPosition.x += robotSpeed * np.cos(angle)
+                robotPosition.y += robotSpeed * np.sin(angle)
 
-            if concentration > lastHighConc:
-                lastHigh = robotPosition
-                lastHighConc = concentration
-                found_high_point = True
-                cast_timer = simulationTime
-                print(f"New highest concentration found at {lastHigh} with concentration: {lastHighConc} ppm")
+            
 
-            if found_high_point and (concentration < low_conc_threshold or (simulationTime - cast_timer > time_to_try_return)):
-                print(f"Low concentration or timeout. Returning to last high concentration at {lastHigh}")
-                robotVelocity = (lastHigh - robotPosition).normalized() * robotSpeed
+                map = sim.generateConcentrationMap2D(iteration, height, True)
+                map_scaled = map * (255.0 / max_ppm)
+                formatted_map = np.array(np.clip(map_scaled, 0, 255), dtype=np.uint8)
 
-            else:
-                robotVelocity = sim.getCurrentWind(robotPosition).projectOnPlane(vector3Up).cross(vector3Up).normalized() * robotSpeed * castDirectionMultiplier
+                base_image = cv2.applyColorMap(formatted_map, cv2.COLORMAP_JET)
+                block(map, base_image)
 
-                if simulationTime - cast_timer > currentCastLength:
-                    castDirectionMultiplier *= -1
-                    cast_timer = simulationTime
-                    currentCastLength += baseCastLength
+                newshape = (imageSizeFactor * base_image.shape[1], imageSizeFactor * base_image.shape[0])
+                heatmap = cv2.resize(base_image, newshape)
 
-            robotVelocity = changeVelocityForObstacles(robotPosition, robotVelocity, deltaTime)
-            robotPosition += robotVelocity * deltaTime
+                markPreviousPositions(previousRobotPositions, initialRobotPosition, heatmap)
 
-            map = sim.generateConcentrationMap2D(iteration, height, True)
-            map_scaled = map * (255.0 / max_ppm)
-            formatted_map = np.array(np.clip(map_scaled, 0, 255), dtype=np.uint8)
+                capture_simulation_data(robotPosition, concentration, sim.getCurrentWind(robotPosition))
 
-            base_image = cv2.applyColorMap(formatted_map, cv2.COLORMAP_JET)
-            block(map, base_image)
+                distanceFromTarger = distance_from_target(robotPosition, finalRobotPosition)
 
-            newshape = (imageSizeFactor * base_image.shape[1], imageSizeFactor * base_image.shape[0])
-            heatmap = cv2.resize(base_image, newshape)
-
-            markPreviousPositions(previousRobotPositions, initialRobotPosition, heatmap)
-
-            #publish_ros_data(robotPosition, concentration, sim.getCurrentWind(robotPosition))
-            capture_simulation_data(robotPosition, concentration, sim.getCurrentWind(robotPosition))
-            simulationTime += deltaTime
-            time.sleep(updateInterval)
-
-        if distanceFromSource(robotPosition) <= 0.5:
-            print("Success! The robot reached the source.")
+                if distanceFromTarger < 0.2:
+                    print(f"Robot reached the target position: {robotPosition}")
+                    break
+        if robotPosition == finalRobotPosition:
+            print("The robot reached the end point.")
         else:
-            print(f"Failed to reach the source. Final distance: {distanceFromSource(robotPosition)}")
+            print(f"The robot did not reach the end point. Current position: {robotPosition}")
         
-        save_gif_and_send()
         sim.stopPlaying()
 
 
 
     def capture_frame_for_gif(image):
         iteration = sim.getCurrentIteration()
+        
         rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(rgb_image)
 
-        frames.append(pil_img)
+        buffered = io.BytesIO()
+        pil_img.save(buffered, format="PNG") 
+        compressed = zlib.compress(buffered.getvalue())
+        img_str = base64.b64encode(compressed).decode('utf-8')
+
         print(f"Captured frame for GIF in iteration: {iteration}.")
 
-    def save_gif_and_send():
-        gif_filename = "simulation_result.gif"
-
-        gif_io = io.BytesIO()
-        frames[0].save(gif_io, format='GIF', save_all=True, append_images=frames[1:], duration=50, loop=0)
-
-        gif_raw = gif_io.getvalue()
-        compressed_gif = zlib.compress(gif_raw)
-        compressed_gif_base64 = base64.b64encode(compressed_gif).decode('utf-8')
+        
 
         response = requests.post('http://webserver:3000/uploadSimulationResults', json={
-            'simulation': simulation_name,  
-            'type': 'robot',
-            'gif': compressed_gif_base64,
-            'height': height,
-        })
+                'simulation': simulation_name,
+                'type': 'robot',
+                'gif': img_str,
+                'height': height,
+                'iteration': iteration
+            })
         global id 
         if response.status_code == 200:
             print("GIF sent successfully.")
             id = response.json().get('id')
-        else:
-            print(f"Failed to send GIF. Status code: {response.status_code}")
+
+
 
     surge_cast()
 
@@ -279,4 +216,4 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
             "wind_speed": vector3_to_dict(frame["wind_speed"]),
         })
 
-    return JSONResponse(content={"frames": simulation_data_serializable, "id": id})
+    #return JSONResponse(content={"frames": simulation_data_serializable, "id": id})
