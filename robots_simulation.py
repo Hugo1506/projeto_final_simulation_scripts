@@ -58,15 +58,14 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
     initialRobotPosition = Vector3(robotXposition,robotYposition, height)
     finalRobotPosition = Vector3(8.0, 2.5, height)
 
-    v1 = np.array([initialRobotPosition.x, initialRobotPosition.y, initialRobotPosition.z])
-    v2 = np.array([finalRobotPosition.x, finalRobotPosition.y, finalRobotPosition.z])
-    dot_product = np.dot(v1, v2)
+    direction_vector = np.array([
+        finalRobotPosition.x - initialRobotPosition.x,
+        finalRobotPosition.y - initialRobotPosition.y
+    ])
+    direction_vector = direction_vector / np.linalg.norm(direction_vector)
 
-    normInitialRobotPosition = np.linalg.norm(v1)
-    normFinalRobotPosition = np.linalg.norm(v2)
-
-    angle = np.arccos(dot_product / (normInitialRobotPosition * normFinalRobotPosition))
-    print(f"Angle between initial and final robot position: {angle}")
+    angle = np.arctan2(direction_vector[1], direction_vector[0])
+    print(f"Angle from initial to final robot position: {angle}")
 
     simulation_dir = username + "_sim_" + simulationNumber
     scenario_path = os.path.join("/src/install/test_env/share/test_env/scenarios",simulation_dir)
@@ -119,6 +118,16 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
 
         previousRobotPositions = []
 
+        response = requests.get('http://webserver:3000/getRobotSimulationID', params={
+            'simulation': simulation_name
+        })
+
+        if response.status_code == 200:
+            global robotSim_id
+            robotSim_id = response.json().get('id')
+            print(f"Robot simulation ID: {robotSim_id}")
+
+
   
 
         global frames
@@ -164,13 +173,11 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
 
                 distanceFromTarger = distance_from_target(robotPosition, finalRobotPosition)
 
-                if distanceFromTarger < 0.2:
+                if distanceFromTarger < 0.5:
                     print(f"Robot reached the target position: {robotPosition}")
                     break
-        if robotPosition == finalRobotPosition:
-            print("The robot reached the end point.")
-        else:
-            print(f"The robot did not reach the end point. Current position: {robotPosition}")
+                else:
+                    print(f"The robot did not reach the end point. Current position: {robotPosition}")
         
         sim.stopPlaying()
 
@@ -189,6 +196,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
 
         print(f"Captured frame for GIF in iteration: {iteration}.")
 
+
         
 
         response = requests.post('http://webserver:3000/uploadSimulationResults', json={
@@ -196,7 +204,8 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
                 'type': 'robot',
                 'gif': img_str,
                 'height': height,
-                'iteration': iteration
+                'iteration': iteration,
+                'robotSim_id': robotSim_id + 1 
             })
         global id 
         if response.status_code == 200:
@@ -216,4 +225,4 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
             "wind_speed": vector3_to_dict(frame["wind_speed"]),
         })
 
-    #return JSONResponse(content={"frames": simulation_data_serializable, "id": id})
+    return JSONResponse(content={"frames": simulation_data_serializable, "id": id})
