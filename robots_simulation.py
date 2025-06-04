@@ -53,10 +53,10 @@ def set_plume_location(username: str, simulationNumber: str, plumeXlocation: flo
     return JSONResponse(content={"message": "Plume location set successfully."})
 
 @app.get("/robot_simulation")
-def robot_simulation(username: str, simulationNumber: str, height: float, robotSpeed: float, robotXposition: float, robotYposition: float):
+def robot_simulation(username: str, simulationNumber: str, height: float, robotSpeed: float, robotXposition: float, robotYposition: float, finalXposition: float, finalYposition: float):
     vector3Up = Vector3(0, 0, 1)
     initialRobotPosition = Vector3(robotXposition,robotYposition, height)
-    finalRobotPosition = Vector3(8.0, 2.5, height)
+    finalRobotPosition = Vector3(finalXposition, finalYposition, height)
 
     direction_vector = np.array([
         finalRobotPosition.x - initialRobotPosition.x,
@@ -104,7 +104,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
         i = int((initialRobotPosition.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
         image = cv2.circle(image, (i, j), 4, (255, 0, 0), -1)
 
-        capture_frame_for_gif(image)
+
 
     def distance_from_target(robotPosition, finalPosition):
         return np.sqrt((robotPosition.x - finalPosition.x) ** 2 + (robotPosition.y - finalPosition.y) ** 2)
@@ -168,7 +168,8 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
                 heatmap = cv2.resize(base_image, newshape)
 
                 markPreviousPositions(previousRobotPositions, initialRobotPosition, heatmap)
-
+                capture_frame_for_gif(heatmap)
+                
                 capture_simulation_data(robotPosition, concentration, sim.getCurrentWind(robotPosition))
 
                 distanceFromTarger = distance_from_target(robotPosition, finalRobotPosition)
