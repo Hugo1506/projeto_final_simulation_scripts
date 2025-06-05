@@ -78,18 +78,19 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
                     ocuppancy_path)
 
     imageSizeFactor = 5  
-    max_ppm = 10.0
+    max_ppm = 7.0
 
     simulation_data = []
 
     def vector3_to_dict(v):
         return {"x": v.x, "y": v.y, "z": v.z}
 
-    def capture_simulation_data(robot_position, concentration, wind_speed):
+    def capture_simulation_data(robot_position, concentration, wind_speed, iteration):
         frame_data = {
-            "robot_position": robot_position,
+            "robot_position": Vector3(robot_position.x, robot_position.y, robot_position.z),
             "concentration": concentration,
-            "wind_speed": wind_speed
+            "wind_speed": wind_speed,
+            "iteration": iteration
         }
 
         simulation_data.append(frame_data)
@@ -98,11 +99,11 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
         for pos in previousPositions:
             j = int((pos.x - sim.env_min.x) / (sim.env_max.x - sim.env_min.x) * image.shape[0])
             i = int((pos.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
-            image = cv2.circle(image, (i, j), 2, (0, 0, 0), -1)
+            image = cv2.circle(image, (i, j), 2, (255,255,255), -1)
 
         j = int((initialRobotPosition.x - sim.env_min.x) / (sim.env_max.x - sim.env_min.x) * image.shape[0])
         i = int((initialRobotPosition.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
-        image = cv2.circle(image, (i, j), 4, (255, 0, 0), -1)
+        image = cv2.circle(image, (i, j), 4,(255,255,255), -1)
 
 
 
@@ -125,6 +126,8 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
         if response.status_code == 200:
             global robotSim_id
             robotSim_id = response.json().get('id')
+            if robotSim_id is None:
+                robotSim_id = 0
             print(f"Robot simulation ID: {robotSim_id}")
 
 
@@ -170,7 +173,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
                 markPreviousPositions(previousRobotPositions, initialRobotPosition, heatmap)
                 capture_frame_for_gif(heatmap)
                 
-                capture_simulation_data(robotPosition, concentration, sim.getCurrentWind(robotPosition))
+                capture_simulation_data(robotPosition, concentration, sim.getCurrentWind(robotPosition), iteration)
 
                 distanceFromTarger = distance_from_target(robotPosition, finalRobotPosition)
 
@@ -219,11 +222,13 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
 
     simulation_data_serializable = []
 
+
     for frame in simulation_data:
         simulation_data_serializable.append({
             "robot_position": vector3_to_dict(frame["robot_position"]),
             "concentration": frame["concentration"],
             "wind_speed": vector3_to_dict(frame["wind_speed"]),
+            "iteration": frame["iteration"]
         })
 
-    return JSONResponse(content={"frames": simulation_data_serializable, "id": id})
+    return JSONResponse(content={"frames": simulation_data_serializable, "robotSim_id": robotSim_id + 1}) 

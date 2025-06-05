@@ -35,7 +35,7 @@ max_ppm = 7.0
 imageSizeFactor = 5          
 contour_threshold = 40      
 timePerIteration = 1
-numberOfIterations = 30
+numberOfIterations = 100
 
 
 
