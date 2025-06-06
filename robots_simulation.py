@@ -99,7 +99,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
         for pos in previousPositions:
             j = int((pos.x - sim.env_min.x) / (sim.env_max.x - sim.env_min.x) * image.shape[0])
             i = int((pos.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
-            image = cv2.circle(image, (i, j), 2, (255,255,255), -1)
+            cv2.rectangle(image, (i, j-1), (i, j), (255,255,255), -1)
 
         j = int((initialRobotPosition.x - sim.env_min.x) / (sim.env_max.x - sim.env_min.x) * image.shape[0])
         i = int((initialRobotPosition.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
@@ -142,19 +142,18 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
         while robotPosition != finalRobotPosition:
             iteration = sim.getCurrentIteration()
 
-            if iteration >= 30:
-                print("Something went wrong!")
-                break
             
-            if iteration >= last_iteration:
+            if iteration > last_iteration:
                 last_iteration = last_iteration + 1
-                previousRobotPositions.append(robotPosition)
+                print(f"Iteration: {iteration} robotPosition: {robotPosition}")
+                previousRobotPositions.append(Vector3(robotPosition.x, robotPosition.y, robotPosition.z))
 
                 concentration = sim.getCurrentConcentration(robotPosition)
                 print(f"Location: {robotPosition}")
                 print(f"Concentration at robot position: {concentration} ppm")
 
-                
+                capture_simulation_data(robotPosition, concentration, sim.getCurrentWind(robotPosition), iteration)
+
                 robotPosition.x += robotSpeed * np.cos(angle)
                 robotPosition.y += robotSpeed * np.sin(angle)
 
@@ -173,7 +172,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
                 markPreviousPositions(previousRobotPositions, initialRobotPosition, heatmap)
                 capture_frame_for_gif(heatmap)
                 
-                capture_simulation_data(robotPosition, concentration, sim.getCurrentWind(robotPosition), iteration)
+                
 
                 distanceFromTarger = distance_from_target(robotPosition, finalRobotPosition)
 
@@ -230,5 +229,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
             "wind_speed": vector3_to_dict(frame["wind_speed"]),
             "iteration": frame["iteration"]
         })
+
+
 
     return JSONResponse(content={"frames": simulation_data_serializable, "robotSim_id": robotSim_id + 1}) 
