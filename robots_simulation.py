@@ -139,7 +139,8 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
         while sim.getCurrentIteration() != 0:
             time.sleep(0.01)
 
-        while robotPosition != finalRobotPosition:
+
+        while (True):
             iteration = sim.getCurrentIteration()
 
             
@@ -154,10 +155,6 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
 
                 capture_simulation_data(robotPosition, concentration, sim.getCurrentWind(robotPosition), iteration)
 
-                robotPosition.x += robotSpeed * np.cos(angle)
-                robotPosition.y += robotSpeed * np.sin(angle)
-
-            
 
                 map = sim.generateConcentrationMap2D(iteration, height, True)
                 map_scaled = map * (255.0 / max_ppm)
@@ -171,12 +168,31 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
 
                 markPreviousPositions(previousRobotPositions, initialRobotPosition, heatmap)
                 capture_frame_for_gif(heatmap)
+
+                robotPosition.x += robotSpeed * np.cos(angle)
+                robotPosition.y += robotSpeed * np.sin(angle)
                 
                 
 
                 distanceFromTarger = distance_from_target(robotPosition, finalRobotPosition)
 
-                if distanceFromTarger < 0.5:
+                if distanceFromTarger < robotSpeed:
+                    
+                    # Captura o último frame antes de parar a simulação
+                    iteration = sim.getCurrentIteration()
+                    previousRobotPositions.append(Vector3(robotPosition.x, robotPosition.y, robotPosition.z))
+                    concentration = sim.getCurrentConcentration(robotPosition)
+                    capture_simulation_data(robotPosition, concentration, sim.getCurrentWind(robotPosition), iteration)
+                    map = sim.generateConcentrationMap2D(iteration, height, True)
+                    map_scaled = map * (255.0 / max_ppm)
+                    formatted_map = np.array(np.clip(map_scaled, 0, 255), dtype=np.uint8)
+                    base_image = cv2.applyColorMap(formatted_map, cv2.COLORMAP_JET)
+                    block(map, base_image)
+                    newshape = (imageSizeFactor * base_image.shape[1], imageSizeFactor * base_image.shape[0])
+                    heatmap = cv2.resize(base_image, newshape)
+                    markPreviousPositions(previousRobotPositions, initialRobotPosition, heatmap)
+                    capture_frame_for_gif(heatmap)
+
                     print(f"Robot reached the target position: {robotPosition}")
                     break
                 else:
