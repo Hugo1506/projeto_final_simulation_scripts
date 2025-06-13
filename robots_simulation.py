@@ -12,6 +12,7 @@ from gadentools.Simulation import Simulation
 from gadentools.Utils import Vector3
 from gadentools.Utils import block
 from fastapi.responses import JSONResponse
+import json
 import requests
 import base64
 import sys
@@ -53,19 +54,64 @@ def set_plume_location(username: str, simulationNumber: str, plumeXlocation: flo
     return JSONResponse(content={"message": "Plume location set successfully."})
 
 @app.get("/robot_simulation")
-def robot_simulation(username: str, simulationNumber: str, height: float, robotSpeed: float, robotXposition: float, robotYposition: float, finalXposition: float, finalYposition: float):
-    vector3Up = Vector3(0, 0, 1)
-    initialRobotPosition = Vector3(robotXposition,robotYposition, height)
-    finalRobotPosition = Vector3(finalXposition, finalYposition, height)
+def robot_simulation(username: str, simulationNumber: str, height: float, robots):
 
-    direction_vector = np.array([
+    if isinstance(robots, str):
+        robots = json.loads(robots)
+
+    print(robots)
+
+    robot1Speed = float(robots[0]["robotSpeed"])
+    robot1Xposition = float(robots[0]["robotXlocation"])
+    robot1Yposition = float(robots[0]["robotYlocation"])
+    final1Xposition = float(robots[0]["finalRobotXlocation"])
+    final1Yposition = float(robots[0]["finalRobotYlocation"])
+    
+
+    vector3Up = Vector3(0, 0, 1)
+    initialRobotPosition = Vector3(robot1Xposition,robot1Yposition, height)
+    finalRobotPosition = Vector3(final1Xposition, final1Yposition, height)
+
+    direction_vector1 = np.array([
         finalRobotPosition.x - initialRobotPosition.x,
         finalRobotPosition.y - initialRobotPosition.y
     ])
-    direction_vector = direction_vector / np.linalg.norm(direction_vector)
+    direction_vector1 = direction_vector1 / np.linalg.norm(direction_vector1)
 
-    angle = np.arctan2(direction_vector[1], direction_vector[0])
-    print(f"Angle from initial to final robot position: {angle}")
+    angle1 = np.arctan2(direction_vector1[1], direction_vector1[0])
+    print(f"angle from initial to final robot position: {angle1}")
+
+    if len(robots) > 1:
+        robot2Speed = float(robots[1]["robotSpeed"])
+        robot2Xposition = float(robots[1]["robotXlocation"])
+        robot2Yposition = float(robots[1]["robotYlocation"])
+        final2Xposition = float(robots[1]["finalRobotXlocation"])
+        final2Yposition = float(robots[1]["finalRobotYlocation"])
+    else:
+        robot2Speed = robot2Xposition = robot2Yposition = final2Xposition = final2Yposition = None
+    
+    print(f"robot2: speed: {robot2Speed}, X position: {robot2Xposition}, Y position: {robot2Yposition}, final X position: {final2Xposition}, final Y position: {final2Yposition}")
+
+    if len(robots) > 2:
+        robot3Speed = float(robots[2]["robotSpeed"])
+        robot3Xposition = float(robots[2]["robotXlocation"])
+        robot3Yposition = float(robots[2]["robotYlocation"])
+        final3Xposition = float(robots[2]["finalRobotXlocation"])
+        final3Yposition = float(robots[2]["finalRobotYlocation"])
+    else:
+        robot3Speed = robot3Xposition = robot3Yposition = final3Xposition = final3Yposition = None
+    print(f"robot3: speed: {robot3Speed}, X position: {robot3Xposition}, Y position: {robot3Yposition}, final X position: {final3Xposition}, final Y position: {final3Yposition}")
+
+
+    if len(robots) > 3:
+        robot4Speed = float(robots[3]["robotSpeed"])
+        robot4Xposition = float(robots[3]["robotXlocation"])
+        robot4Yposition = float(robots[3]["robotYlocation"])
+        final4Xposition = float(robots[3]["finalRobotXlocation"])
+        final4Yposition = float(robots[3]["finalRobotYlocation"])
+    else:
+        robot4Speed = robot4Xposition = robot4Yposition = final4Xposition = final4Yposition = None
+    print(f"robot4: speed: {robot4Speed}, X position: {robot4Xposition}, Y position: {robot4Yposition}, final X position: {final4Xposition}, final Y position: {final4Yposition}")
 
     simulation_dir = username + "_sim_" + simulationNumber
     scenario_path = os.path.join("/src/install/test_env/share/test_env/scenarios",simulation_dir)
@@ -169,14 +215,14 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robotS
                 markPreviousPositions(previousRobotPositions, initialRobotPosition, heatmap)
                 capture_frame_for_gif(heatmap)
 
-                robotPosition.x += robotSpeed * np.cos(angle)
-                robotPosition.y += robotSpeed * np.sin(angle)
+                robotPosition.x += robot1Speed * np.cos(angle1)
+                robotPosition.y += robot1Speed * np.sin(angle1)
                 
                 
 
                 distanceFromTarger = distance_from_target(robotPosition, finalRobotPosition)
 
-                if distanceFromTarger < robotSpeed:
+                if distanceFromTarger < robot1Speed:
                     
                     # Captura o último frame antes de parar a simulação
                     iteration = sim.getCurrentIteration()
