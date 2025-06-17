@@ -20,6 +20,98 @@ import sys
 app = FastAPI()
 
 
+
+@app.get("/example_simulation")
+def example_simulation(username: str, simulationNumber: str, plumeXlocation: float, plumeYlocation: float, plumeZlocation: float, zMin: float, zMax: float):
+    try:
+        simulation_dir = username + "_sim_" + simulationNumber
+        simulation = username + "_" + simulationNumber
+        scenario_path = os.path.join("/src/install/test_env/share/test_env/scenarios", simulation_dir)
+        gaden_params_file = os.path.join(scenario_path, 'params', 'gaden_params.yaml')
+        
+        # Update YAML with new plume location
+        with open(gaden_params_file, 'r') as file:
+            gaden_params = yaml.safe_load(file)
+
+        gaden_params['gaden_filament_simulator']['ros__parameters']['source_position_x'] = plumeXlocation
+        gaden_params['gaden_filament_simulator']['ros__parameters']['source_position_y'] = plumeYlocation
+        gaden_params['gaden_filament_simulator']['ros__parameters']['source_position_z'] = plumeZlocation
+
+        with open(gaden_params_file, 'w') as file:
+            yaml.dump(gaden_params, file, width=1000)
+
+        # Run the simulation first and wait for it to complete
+        subprocess.run(
+            ['ros2', 'launch', 'test_env', 'gaden_sim_no_gui_launch.py', f'scenario:={simulation_dir}'],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            text=True,
+            timeout=120 
+        )
+
+        # Run visualizer to ensure files are processed
+        subprocess.run(['python3', "simulation_visualizer.py", f'{simulation_dir}'])
+
+        # Now generate wind map
+        simulation_path = os.path.join(scenario_path, "gas_simulations/sim1")
+        ocuppancy_path = os.path.join(scenario_path, "OccupancyGrid3D.csv")
+        arrowLength = 10
+        spaceBetweenArrows = 5
+        imageSizeFactor = 5
+
+        sim = Simulation(simulation_path, ocuppancy_path)
+        map = sim.generateWindMap2D(sim.getCurrentIteration(), 0.0, True)
+
+        # Create base image
+        base_image = numpy.full(map.shape, 255, numpy.uint8)
+        block(map, base_image)
+
+        # Resize and convert image
+        newshape = (imageSizeFactor * map.shape[1], imageSizeFactor * map.shape[0])
+        base_image = cv2.resize(base_image, newshape)
+        base_image = cv2.cvtColor(base_image, cv2.COLOR_GRAY2BGR)
+
+        # Draw arrows
+        for i in range(0, map.shape[0], spaceBetweenArrows):
+            for j in range(0, map.shape[1], spaceBetweenArrows):
+                if isinstance(map[i, j], Vector3):
+                    offsetX = int(map[i, j].x * arrowLength)
+                    offsetY = int(map[i, j].y * arrowLength)
+                    start_point = (imageSizeFactor * j, imageSizeFactor * i)
+                    end_point = (start_point[0] + offsetY, start_point[1] + offsetX)
+                    cv2.arrowedLine(base_image, start_point, end_point, (0, 0, 255), 2)
+
+        # Convert and compress image
+        rgb_image = cv2.cvtColor(base_image, cv2.COLOR_BGR2RGB)
+        pil_img = Image.fromarray(rgb_image)
+
+        buffered = io.BytesIO()
+        pil_img.save(buffered, format="PNG") 
+        compressed = zlib.compress(buffered.getvalue())
+        img_str = base64.b64encode(compressed).decode('utf-8')
+
+        # Upload results
+        response = requests.post('http://webserver:3000/uploadSimulationResults', json={
+            'simulation': simulation,
+            'type': 'plume_wind',
+            'gif': img_str,
+            'height': 0.0,
+            'iteration': sim.getCurrentIteration(),
+            'robotSim_id': -1  # Add this to ensure database insert works
+        })
+
+        if response.status_code != 200:
+            print(f"Failed to upload: {response.status_code}, {response.text}")
+        else: 
+            print(f"right: {response.status_code}, {response.text}")
+
+        return JSONResponse(content={"message": "Plume location set successfully."})
+    except Exception as e:
+        print("Error:", e)
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}
+
 @app.get("/set_plume_location")
 def set_plume_location(username: str, simulationNumber: str, plumeXlocation: float, plumeYlocation: float, plumeZlocation: float):
     simulation_dir = username + "_sim_" + simulationNumber
@@ -40,8 +132,13 @@ def set_plume_location(username: str, simulationNumber: str, plumeXlocation: flo
         yaml.dump(gaden_params, file, width=1000)
 
     # corre o script modificado de simulação do gaden para fazer a simulação mas sem GUI
-    subprocess.run(['ros2', 'launch', 'test_env', 'gaden_sim_no_gui_launch.py', f'scenario:={simulation_dir}'])
-    
+    subprocess.run(
+            ['ros2', 'launch', 'test_env', 'gaden_sim_no_gui_launch.py', f'scenario:={simulation_dir}'],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            text=True,
+            timeout=120 
+    )
 
     subprocess.run(['python3', "simulation_visualizer.py", f'{simulation_dir}'])
 
