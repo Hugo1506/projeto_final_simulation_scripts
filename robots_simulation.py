@@ -560,9 +560,8 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robots
 
     return JSONResponse(content={"frames": simulation_data_serializable, "robotSim_id": robotSim_id + 1}) 
 
-@app.get("/silkwormMoth")
+@app.get("/silkworm_moth_simulation")
 def silkworm_moth_simulation(username: str, simulationNumber: str, height: float, robots):
-
     if isinstance(robots, str):
         robots = json.loads(robots)
 
@@ -630,6 +629,50 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
     max_ppm = 7.0
 
     simulation_data = []
+
+    def capture_frame_for_gif(image):
+        iteration = sim.getCurrentIteration()
+        
+        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        pil_img = Image.fromarray(rgb_image)
+
+        buffered = io.BytesIO()
+        pil_img.save(buffered, format="PNG") 
+        compressed = zlib.compress(buffered.getvalue())
+        img_str = base64.b64encode(compressed).decode('utf-8')
+
+        print(f"Captured frame for GIF in iteration: {iteration}.")
+
+
+        
+
+        response = requests.post('http://webserver:3000/uploadSimulationResults', json={
+                'simulation': simulation_name,
+                'type': 'robot',
+                'gif': img_str,
+                'height': height,
+                'iteration': iteration,
+                'robotSim_id': robotSim_id + 1 
+            })
+        global id 
+        if response.status_code == 200:
+            print("GIF sent successfully.")
+            id = response.json().get('id')
+
+    def vector3_to_dict(v):
+        return {"x": v.x, "y": v.y, "z": v.z}
+
+    def capture_simulation_data(robot_position, concentration, wind_speed, iteration, robot):
+        frame_data = {
+            "robot_position": Vector3(robot_position.x, robot_position.y, robot_position.z),
+            "concentration": concentration,
+            "wind_speed": wind_speed,
+            "iteration": iteration,
+            "robot": robot
+        }
+
+        simulation_data.append(frame_data)
+
 
     def markPreviousPositions(previous1Positions,previous2Positions,previous3Positions,previous4Positions,
         initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
@@ -726,85 +769,85 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
         while sim.getCurrentIteration() != 0:
             time.sleep(0.01)
         
-            while (True):
-                iteration = sim.getCurrentIteration()
-
-                
-                if iteration > last_iteration:
-                    last_iteration = last_iteration + 1
-                    print(f"Iteration: {iteration} robot1Position: {robot1Position}")
-
-                    previousRobot1Positions.append(Vector3(robot1Position.x, robot1Position.y, robot1Position.z))
-                    if robot2Position is not None:
-                        previousRobot2Positions.append(Vector3(robot2Position.x, robot2Position.y, robot2Position.z))
-                        if robot3Position is not None:
-                            previousRobot3Positions.append(Vector3(robot3Position.x, robot3Position.y, robot3Position.z))                
-                            if robot4Position is not None:
-                                previousRobot4Positions.append(Vector3(robot4Position.x, robot4Position.y, robot4Position.z))
-                    
-
-
-                    concentration1 = sim.getCurrentConcentration(robot1Position)
-                    print(f"Location: {robot1Position}")
-                    print(f"Concentration at robot1 position: {concentration1} ppm")
-
-                    capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), iteration, 1)
-                    if robot2Position is not None:
-                        capture_simulation_data(robot2Position, sim.getCurrentConcentration(robot2Position), sim.getCurrentWind(robot2Position), iteration, 2)
-                        if robot3Position is not None:
-                            capture_simulation_data(robot3Position, sim.getCurrentConcentration(robot3Position), sim.getCurrentWind(robot3Position), iteration, 3)
-                            if robot4Position is not None:
-                                capture_simulation_data(robot4Position, sim.getCurrentConcentration(robot4Position), sim.getCurrentWind(robot4Position), iteration, 4)
-                
-
-
-                    map = sim.generateConcentrationMap2D(iteration, height, True)
-                    map_scaled = map * (255.0 / max_ppm)
-                    formatted_map = np.array(np.clip(map_scaled, 0, 255), dtype=np.uint8)
-
-                    base_image = cv2.applyColorMap(formatted_map, cv2.COLORMAP_JET)
-                    block(map, base_image)
-
-                    newshape = (imageSizeFactor * base_image.shape[1], imageSizeFactor * base_image.shape[0])
-                    heatmap = cv2.resize(base_image, newshape)
-
-                    markPreviousPositions(previousRobot1Positions, previousRobot2Positions,previousRobot3Positions,previousRobot4Positions,
-                                            initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
-                                            heatmap)
-
-                    capture_frame_for_gif(heatmap)
+        while (True):
+            iteration = sim.getCurrentIteration()
 
             
-                if robot1Position is not None and not robot1StopFlag:
-                    robot1Position.x += robot1Speed * np.cos(angle1)
-                    robot1Position.y += robot1Speed * np.sin(angle1)
-                    if iteration >= 40:
-                        robot1StopFlag = True
-                        print(f"Robot 1 reached the target position: {robot1Position}")
+            if iteration > last_iteration:
+                last_iteration = last_iteration + 1
+                print(f"Iteration: {iteration} robot1Position: {robot1Position}")
 
-                if robot2Position is not None and not robot2StopFlag:
-                    robot2Position.x += robot2Speed * np.cos(angle2)
-                    robot2Position.y += robot2Speed * np.sin(angle2)
-                    if iteration >= 40:
-                        robot2StopFlag = True
-                        print(f"Robot 2 reached the target position: {robot2Position}")
-
-                if robot3Position is not None and not robot3StopFlag:
-                    robot3Position.x += robot3Speed * np.cos(angle3)
-                    robot3Position.y += robot3Speed * np.sin(angle3)
-                    if iteration >= 40:
-                        robot3StopFlag = True
-                        print(f"Robot 3 reached the target position: {robot3Position}")
-
-                if robot4Position is not None and not robot4StopFlag:
-                    robot4Position.x += robot4Speed * np.cos(angle4)
-                    robot4Position.y += robot4Speed * np.sin(angle4)
-                    if iteration >= 40:
-                        robot4StopFlag = True
-                        print(f"Robot 4 reached the target position: {robot4Position}")
+                previousRobot1Positions.append(Vector3(robot1Position.x, robot1Position.y, robot1Position.z))
+                if robot2Position is not None:
+                    previousRobot2Positions.append(Vector3(robot2Position.x, robot2Position.y, robot2Position.z))
+                    if robot3Position is not None:
+                        previousRobot3Positions.append(Vector3(robot3Position.x, robot3Position.y, robot3Position.z))                
+                        if robot4Position is not None:
+                            previousRobot4Positions.append(Vector3(robot4Position.x, robot4Position.y, robot4Position.z))
                 
-                if robot1StopFlag: 
-                    break
+
+
+                concentration1 = sim.getCurrentConcentration(robot1Position)
+                print(f"Location: {robot1Position}")
+                print(f"Concentration at robot1 position: {concentration1} ppm")
+
+                capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), iteration, 1)
+                if robot2Position is not None:
+                    capture_simulation_data(robot2Position, sim.getCurrentConcentration(robot2Position), sim.getCurrentWind(robot2Position), iteration, 2)
+                    if robot3Position is not None:
+                        capture_simulation_data(robot3Position, sim.getCurrentConcentration(robot3Position), sim.getCurrentWind(robot3Position), iteration, 3)
+                        if robot4Position is not None:
+                            capture_simulation_data(robot4Position, sim.getCurrentConcentration(robot4Position), sim.getCurrentWind(robot4Position), iteration, 4)
+            
+
+
+                map = sim.generateConcentrationMap2D(iteration, height, True)
+                map_scaled = map * (255.0 / max_ppm)
+                formatted_map = np.array(np.clip(map_scaled, 0, 255), dtype=np.uint8)
+
+                base_image = cv2.applyColorMap(formatted_map, cv2.COLORMAP_JET)
+                block(map, base_image)
+
+                newshape = (imageSizeFactor * base_image.shape[1], imageSizeFactor * base_image.shape[0])
+                heatmap = cv2.resize(base_image, newshape)
+
+                markPreviousPositions(previousRobot1Positions, previousRobot2Positions,previousRobot3Positions,previousRobot4Positions,
+                                        initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
+                                        heatmap)
+
+                capture_frame_for_gif(heatmap)
+
+        
+            if robot1Position is not None and not robot1StopFlag:
+                robot1Position.x += robot1Speed * np.cos(angle1)
+                robot1Position.y += robot1Speed * np.sin(angle1)
+                if iteration >= 40:
+                    robot1StopFlag = True
+                    print(f"Robot 1 reached the target position: {robot1Position}")
+
+            if robot2Position is not None and not robot2StopFlag:
+                robot2Position.x += robot2Speed * np.cos(angle2)
+                robot2Position.y += robot2Speed * np.sin(angle2)
+                if iteration >= 40:
+                    robot2StopFlag = True
+                    print(f"Robot 2 reached the target position: {robot2Position}")
+
+            if robot3Position is not None and not robot3StopFlag:
+                robot3Position.x += robot3Speed * np.cos(angle3)
+                robot3Position.y += robot3Speed * np.sin(angle3)
+                if iteration >= 40:
+                    robot3StopFlag = True
+                    print(f"Robot 3 reached the target position: {robot3Position}")
+
+            if robot4Position is not None and not robot4StopFlag:
+                robot4Position.x += robot4Speed * np.cos(angle4)
+                robot4Position.y += robot4Speed * np.sin(angle4)
+                if iteration >= 40:
+                    robot4StopFlag = True
+                    print(f"Robot 4 reached the target position: {robot4Position}")
+            
+            if robot1StopFlag: 
+                break
 
     main()
 
@@ -823,33 +866,4 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
 
     return JSONResponse(content={"frames": simulation_data_serializable, "robotSim_id": robotSim_id + 1}) 
 
-    
-    def capture_frame_for_gif(image):
-        iteration = sim.getCurrentIteration()
-        
-        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        pil_img = Image.fromarray(rgb_image)
-
-        buffered = io.BytesIO()
-        pil_img.save(buffered, format="PNG") 
-        compressed = zlib.compress(buffered.getvalue())
-        img_str = base64.b64encode(compressed).decode('utf-8')
-
-        print(f"Captured frame for GIF in iteration: {iteration}.")
-
-
-        
-
-        response = requests.post('http://webserver:3000/uploadSimulationResults', json={
-                'simulation': simulation_name,
-                'type': 'robot',
-                'gif': img_str,
-                'height': height,
-                'iteration': iteration,
-                'robotSim_id': robotSim_id + 1 
-            })
-        global id 
-        if response.status_code == 200:
-            print("GIF sent successfully.")
-            id = response.json().get('id')
 
