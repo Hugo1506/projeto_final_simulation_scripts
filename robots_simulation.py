@@ -734,7 +734,16 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
         robot3Position = initialRobot3Position if robot3Speed is not None else None
         robot4Position = initialRobot4Position if robot4Speed is not None else None
 
-        last_iteration = -1
+        initial_wind = sim.getCurrentWind(robot1Position)
+        initial_wind_vec = np.array([initial_wind.x, initial_wind.y])
+        initial_wind_norm = np.linalg.norm(initial_wind_vec)
+        if initial_wind_norm == 0:
+            upwind_dir = np.array([np.cos(angle1), np.sin(angle1)])
+            perp_dir = np.array([-np.sin(angle1), np.cos(angle1)])
+        else:
+            wind_dir = initial_wind_vec / initial_wind_norm
+            upwind_dir = -wind_dir
+            perp_dir = np.array([-wind_dir[1], wind_dir[0]])
 
         previousRobot1Positions = []
         previousRobot2Positions = []
@@ -769,12 +778,12 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
         while sim.getCurrentIteration() != 0:
             time.sleep(0.01)
         
+        last_iteration = -1
+
         while (True):
             iteration = sim.getCurrentIteration()
-
-            
             if iteration > last_iteration:
-                last_iteration = last_iteration + 1
+                last_iteration = iteration
                 print(f"Iteration: {iteration} robot1Position: {robot1Position}")
 
                 previousRobot1Positions.append(Vector3(robot1Position.x, robot1Position.y, robot1Position.z))
@@ -816,38 +825,60 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                                         heatmap)
 
                 capture_frame_for_gif(heatmap)
-
-        
-            if robot1Position is not None and not robot1StopFlag:
-                robot1Position.x += robot1Speed * np.cos(angle1)
-                robot1Position.y += robot1Speed * np.sin(angle1)
-                if iteration >= 40:
-                    robot1StopFlag = True
-                    print(f"Robot 1 reached the target position: {robot1Position}")
-
-            if robot2Position is not None and not robot2StopFlag:
-                robot2Position.x += robot2Speed * np.cos(angle2)
-                robot2Position.y += robot2Speed * np.sin(angle2)
-                if iteration >= 40:
-                    robot2StopFlag = True
-                    print(f"Robot 2 reached the target position: {robot2Position}")
-
-            if robot3Position is not None and not robot3StopFlag:
-                robot3Position.x += robot3Speed * np.cos(angle3)
-                robot3Position.y += robot3Speed * np.sin(angle3)
-                if iteration >= 40:
-                    robot3StopFlag = True
-                    print(f"Robot 3 reached the target position: {robot3Position}")
-
-            if robot4Position is not None and not robot4StopFlag:
-                robot4Position.x += robot4Speed * np.cos(angle4)
-                robot4Position.y += robot4Speed * np.sin(angle4)
-                if iteration >= 40:
-                    robot4StopFlag = True
-                    print(f"Robot 4 reached the target position: {robot4Position}")
             
-            if robot1StopFlag: 
-                break
+      
+                if robot1Position is not None and not robot1StopFlag:
+                    concentration1 = sim.getCurrentConcentration(robot1Position)
+                    if concentration1 != 0:
+                        move_dir = upwind_dir
+                        print("Following wind direction due to concentration detected.")
+                        dx = robot1Speed * updateInterval * move_dir[0]
+                        dy = robot1Speed * updateInterval * move_dir[1]
+                    else:
+                        zigzag_sign = 1 if iteration % 2 == 0 else -1
+                        # Zigzag only in the dy direction (y-component)
+                        dx = robot1Speed * updateInterval * upwind_dir[0]
+                        dy = robot1Speed * updateInterval * (upwind_dir[1] + np.sin(angle1) * zigzag_sign)
+                        # Optionally normalize the movement vector if you want constant speed:
+                        norm = np.linalg.norm([dx, dy])
+                        if norm != 0:
+                            dx = robot1Speed * updateInterval * dx / norm
+                            dy = robot1Speed * updateInterval * dy / norm
+                        print("Zigzagging against initial wind direction (dy only).")
+                    print(f"dx={dx}, dy={dy}")
+
+                    robot1Position.x += dx
+                    robot1Position.y += dy
+
+                    if iteration >= 300:
+                        robot1StopFlag = True
+                        print(f"Robot 1 stopped at: {robot1Position}")
+
+                if robot2Position is not None and not robot2StopFlag:
+                    robot2Position.x += robot2Speed * updateInterval * np.cos(angle2)
+                    robot2Position.y += robot2Speed * updateInterval * np.sin(angle2)
+                    if iteration >= 40:
+                        robot2StopFlag = True
+                        print(f"Robot 2 reached the target position: {robot2Position}")
+
+                if robot3Position is not None and not robot3StopFlag:
+                    robot3Position.x += robot3Speed * updateInterval * np.cos(angle3)
+                    robot3Position.y += robot3Speed * updateInterval * np.sin(angle3)
+                    if iteration >= 40:
+                        robot3StopFlag = True
+                        print(f"Robot 3 reached the target position: {robot3Position}")
+
+                if robot4Position is not None and not robot4StopFlag:
+                    robot4Position.x += robot4Speed * updateInterval * np.cos(angle4)
+                    robot4Position.y += robot4Speed * updateInterval * np.sin(angle4)
+                    if iteration >= 40:
+                        robot4StopFlag = True
+                        print(f"Robot 4 reached the target position: {robot4Position}")
+                
+                if robot1StopFlag: 
+                    break
+            else:
+                time.sleep(0.01)
 
     main()
 
