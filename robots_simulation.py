@@ -63,7 +63,7 @@ def example_simulation(username: str, simulationNumber: str, plumeXlocation: flo
         map = sim.generateWindMap2D(sim.getCurrentIteration(), 0.0, True)
 
         # Create base image
-        base_image = numpy.full(map.shape, 255, numpy.uint8)
+        base_image = np.full(map.shape, 255, np.uint8)
         block(map, base_image)
 
         # Resize and convert image
@@ -201,7 +201,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robots
 
     else:
         initialRobot2Position = finalRobot2Position = None
-        robot2Speed = robot2Xposition = robot2Yposition = final2Xposition = final2Yposition = None
+        robot2Speed = robot2Xposition = robot2Yposition = final2Xposition = final2Yposition = angle2 = None
     
     print(f"robot2: speed: {robot2Speed}, X position: {robot2Xposition}, Y position: {robot2Yposition}, final X position: {final2Xposition}, final Y position: {final2Yposition}")
 
@@ -226,7 +226,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robots
 
     else:
         initialRobot3Position = finalRobot3Position = None
-        robot3Speed = robot3Xposition = robot3Yposition = final3Xposition = final3Yposition = None
+        robot3Speed = robot3Xposition = robot3Yposition = final3Xposition = final3Yposition = angle3 = None
     print(f"robot3: speed: {robot3Speed}, X position: {robot3Xposition}, Y position: {robot3Yposition}, final X position: {final3Xposition}, final Y position: {final3Yposition}")
 
 
@@ -251,7 +251,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robots
 
     else:
         initialRobot4Position = finalRobot4Position = None
-        robot4Speed = robot4Xposition = robot4Yposition = final4Xposition = final4Yposition = None
+        robot4Speed = robot4Xposition = robot4Yposition = final4Xposition = final4Yposition = angle4 = None
     print(f"robot4: speed: {robot4Speed}, X position: {robot4Xposition}, Y position: {robot4Yposition}, final X position: {final4Xposition}, final Y position: {final4Yposition}")
 
     simulation_dir = username + "_sim_" + simulationNumber
@@ -441,7 +441,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robots
                         robot1StopFlag = True
                         print(f"Robot 1 reached the target position: {robot1Position}")
 
-                if robot2Position is not None and not robot2StopFlag:
+                if robot2Position is not None and not robot2StopFlag and angle2 is not None:
                     robot2Position.x += robot2Speed * np.cos(angle2)
                     robot2Position.y += robot2Speed * np.sin(angle2)
                     distanceFromTarger2 = distance_from_target(robot2Position, finalRobot2Position)
@@ -449,7 +449,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robots
                         robot2StopFlag = True
                         print(f"Robot 2 reached the target position: {robot2Position}")
 
-                if robot3Position is not None and not robot3StopFlag:
+                if robot3Position is not None and not robot3StopFlag and angle3 is not None:
                     robot3Position.x += robot3Speed * np.cos(angle3)
                     robot3Position.y += robot3Speed * np.sin(angle3)
                     distanceFromTarger3 = distance_from_target(robot3Position, finalRobot3Position)
@@ -457,7 +457,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robots
                         robot3StopFlag = True
                         print(f"Robot 3 reached the target position: {robot3Position}")
 
-                if robot4Position is not None and not robot4StopFlag:
+                if robot4Position is not None and not robot4StopFlag and angle4 is not None:
                     robot4Position.x += robot4Speed * np.cos(angle4)
                     robot4Position.y += robot4Speed * np.sin(angle4)
                     distanceFromTarger4 = distance_from_target(robot4Position, finalRobot4Position)
@@ -734,17 +734,6 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
         robot3Position = initialRobot3Position if robot3Speed is not None else None
         robot4Position = initialRobot4Position if robot4Speed is not None else None
 
-        initial_wind = sim.getCurrentWind(robot1Position)
-        initial_wind_vec = np.array([initial_wind.x, initial_wind.y])
-        initial_wind_norm = np.linalg.norm(initial_wind_vec)
-        if initial_wind_norm == 0:
-            upwind_dir = np.array([np.cos(angle1), np.sin(angle1)])
-            perp_dir = np.array([-np.sin(angle1), np.cos(angle1)])
-        else:
-            wind_dir = initial_wind_vec / initial_wind_norm
-            upwind_dir = -wind_dir
-            perp_dir = np.array([-wind_dir[1], wind_dir[0]])
-
         previousRobot1Positions = []
         previousRobot2Positions = []
         previousRobot3Positions = []
@@ -779,6 +768,8 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
             time.sleep(0.01)
         
         last_iteration = -1
+        zigzag_sign = 1 
+        zigzag_period = 3
 
         while (True):
             iteration = sim.getCurrentIteration()
@@ -828,47 +819,63 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
             
       
                 if robot1Position is not None and not robot1StopFlag:
-                    concentration1 = sim.getCurrentConcentration(robot1Position)
-                    if concentration1 != 0:
-                        move_dir = upwind_dir
-                        print("Following wind direction due to concentration detected.")
-                        dx = robot1Speed * updateInterval * move_dir[0]
-                        dy = robot1Speed * updateInterval * move_dir[1]
+                    windVector = sim.getCurrentWind(robot1Position)
+                    wind_array = np.array([windVector.x, windVector.y, windVector.z])
+
+                    if concentration1 > 0:
+
+                        if np.allclose(wind_array, [0, 0, 0]):
+                            robot1Position.x += robot1Speed * updateInterval
+                            robot1Position.y += 0
+                        else:
+                            inverse_wind = -wind_array
+                            norm = np.linalg.norm(inverse_wind[:2])
+                            if norm == 0:
+                                robot1Position.x += robot1Speed * updateInterval
+                                robot1Position.y += 0
+                            else:
+                                direction = inverse_wind[:2] / norm
+                                robot1Position.x += robot1Speed * updateInterval * direction[0]
+                                robot1Position.y += robot1Speed * updateInterval * direction[1]
                     else:
-                        zigzag_sign = 1 if iteration % 2 == 0 else -1
-                        # Zigzag only in the dy direction (y-component)
-                        dx = robot1Speed * updateInterval * upwind_dir[0]
-                        dy = robot1Speed * updateInterval * (upwind_dir[1] + np.sin(angle1) * zigzag_sign)
-                        # Optionally normalize the movement vector if you want constant speed:
-                        norm = np.linalg.norm([dx, dy])
-                        if norm != 0:
-                            dx = robot1Speed * updateInterval * dx / norm
-                            dy = robot1Speed * updateInterval * dy / norm
-                        print("Zigzagging against initial wind direction (dy only).")
-                    print(f"dx={dx}, dy={dy}")
+                        zigzag_angle = angle1 + zigzag_sign * (np.pi / 4)
+                        # Predict next position
+                        next_x = robot1Position.x - robot1Speed * updateInterval * np.cos(zigzag_angle)
+                        next_y = robot1Position.y + robot1Speed * updateInterval * np.sin(zigzag_angle)
+                        next_position = Vector3(next_x, next_y, robot1Position.z)
+                        # Check for obstacle
+                        if sim.checkPositionForObstacles(next_position):
+                            zigzag_sign = zigzag_sign * -1
+                            zigzag_angle = angle1 + zigzag_sign * (np.pi / 4)
+                            
+                            next_x = robot1Position.x + robot1Speed * updateInterval * np.cos(zigzag_angle)
+                            next_y = robot1Position.y - robot1Speed * updateInterval * np.sin(zigzag_angle)
+                        # Move robot
+                        robot1Position.x = next_x
+                        robot1Position.y = next_y
 
-                    robot1Position.x += dx
-                    robot1Position.y += dy
+                        if (iteration % zigzag_period) == 0:
+                            zigzag_sign *= -1
 
-                    if iteration >= 300:
+                    if iteration >= 100:
                         robot1StopFlag = True
                         print(f"Robot 1 stopped at: {robot1Position}")
 
-                if robot2Position is not None and not robot2StopFlag:
+                if robot2Position and angle2 and robot2Speed is not None  and not robot2StopFlag:
                     robot2Position.x += robot2Speed * updateInterval * np.cos(angle2)
                     robot2Position.y += robot2Speed * updateInterval * np.sin(angle2)
                     if iteration >= 40:
                         robot2StopFlag = True
                         print(f"Robot 2 reached the target position: {robot2Position}")
 
-                if robot3Position is not None and not robot3StopFlag:
+                if robot3Position and angle3 and robot3Speed is not None and not robot3StopFlag:
                     robot3Position.x += robot3Speed * updateInterval * np.cos(angle3)
                     robot3Position.y += robot3Speed * updateInterval * np.sin(angle3)
                     if iteration >= 40:
                         robot3StopFlag = True
                         print(f"Robot 3 reached the target position: {robot3Position}")
 
-                if robot4Position is not None and not robot4StopFlag:
+                if robot4Position and angle4 and robot4Speed is not None and not robot4StopFlag:
                     robot4Position.x += robot4Speed * updateInterval * np.cos(angle4)
                     robot4Position.y += robot4Speed * updateInterval * np.sin(angle4)
                     if iteration >= 40:
