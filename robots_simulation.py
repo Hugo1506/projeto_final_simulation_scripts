@@ -407,13 +407,18 @@ def robot_simulation(username: str, simulationNumber: str, height: float, robots
                 print(f"Location: {robot1Position}")
                 print(f"Concentration at robot1 position: {concentration1} ppm")
 
+                concentration2 = concentration3 = concentration4 = 0
+
                 capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), iteration, 1)
                 if robot2Position is not None:
-                    capture_simulation_data(robot2Position, sim.getCurrentConcentration(robot2Position), sim.getCurrentWind(robot2Position), iteration, 2)
+                    concentration2 = sim.getCurrentConcentration(robot2Position) 
+                    capture_simulation_data(robot2Position, concentration2 , sim.getCurrentWind(robot2Position), iteration, 2)
                     if robot3Position is not None:
-                        capture_simulation_data(robot3Position, sim.getCurrentConcentration(robot3Position), sim.getCurrentWind(robot3Position), iteration, 3)
+                        concentration3 = sim.getCurrentConcentration(robot3Position) 
+                        capture_simulation_data(robot3Position, concentration3, sim.getCurrentWind(robot3Position), iteration, 3)
                         if robot4Position is not None:
-                            capture_simulation_data(robot4Position, sim.getCurrentConcentration(robot4Position), sim.getCurrentWind(robot4Position), iteration, 4)
+                            concentration4 = sim.getCurrentConcentration(robot4Position) 
+                            capture_simulation_data(robot4Position, concentration4, sim.getCurrentWind(robot4Position), iteration, 4)
             
 
 
@@ -768,8 +773,19 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
             time.sleep(0.01)
         
         last_iteration = -1
-        zigzag_sign = 1 
-        zigzag_period = 3
+        zigzag1_sign = 1 
+        zigzag1_period = 3
+
+        zigzag2_sign = 1 
+        zigzag2_period = 3
+
+        zigzag3_sign = 1 
+        zigzag3_period = 3
+
+        zigzag4_sign = 1 
+        zigzag4_period = 3
+
+
 
         while (True):
             iteration = sim.getCurrentIteration()
@@ -791,13 +807,18 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                 print(f"Location: {robot1Position}")
                 print(f"Concentration at robot1 position: {concentration1} ppm")
 
+                concentration2 = concentration3 = concentration4 = 0 
+
                 capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), iteration, 1)
                 if robot2Position is not None:
-                    capture_simulation_data(robot2Position, sim.getCurrentConcentration(robot2Position), sim.getCurrentWind(robot2Position), iteration, 2)
+                    concentration2 = sim.getCurrentConcentration(robot2Position)
+                    capture_simulation_data(robot2Position, concentration2, sim.getCurrentWind(robot2Position), iteration, 2)
                     if robot3Position is not None:
-                        capture_simulation_data(robot3Position, sim.getCurrentConcentration(robot3Position), sim.getCurrentWind(robot3Position), iteration, 3)
+                        concentration3 = sim.getCurrentConcentration(robot3Position)
+                        capture_simulation_data(robot3Position,concentration3, sim.getCurrentWind(robot3Position), iteration, 3)
                         if robot4Position is not None:
-                            capture_simulation_data(robot4Position, sim.getCurrentConcentration(robot4Position), sim.getCurrentWind(robot4Position), iteration, 4)
+                            concentration4 = sim.getCurrentConcentration(robot4Position)
+                            capture_simulation_data(robot4Position, concentration4, sim.getCurrentWind(robot4Position), iteration, 4)
             
 
 
@@ -828,7 +849,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                             robot1Position.x += robot1Speed * updateInterval
                             robot1Position.y += 0
                         else:
-                            inverse_wind = -wind_array
+                            inverse_wind = wind_array
                             norm = np.linalg.norm(inverse_wind[:2])
                             if norm == 0:
                                 robot1Position.x += robot1Speed * updateInterval
@@ -838,51 +859,199 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                                 robot1Position.x += robot1Speed * updateInterval * direction[0]
                                 robot1Position.y += robot1Speed * updateInterval * direction[1]
                     else:
-                        zigzag_angle = angle1 + zigzag_sign * (np.pi / 4)
-                        # Predict next position
-                        next_x = robot1Position.x - robot1Speed * updateInterval * np.cos(zigzag_angle)
-                        next_y = robot1Position.y + robot1Speed * updateInterval * np.sin(zigzag_angle)
-                        next_position = Vector3(next_x, next_y, robot1Position.z)
-                        # Check for obstacle
-                        if sim.checkPositionForObstacles(next_position):
-                            zigzag_sign = zigzag_sign * -1
-                            zigzag_angle = angle1 + zigzag_sign * (np.pi / 4)
-                            
-                            next_x = robot1Position.x + robot1Speed * updateInterval * np.cos(zigzag_angle)
-                            next_y = robot1Position.y - robot1Speed * updateInterval * np.sin(zigzag_angle)
-                        # Move robot
-                        robot1Position.x = next_x
-                        robot1Position.y = next_y
+                        zigzag1_angle = angle1 + zigzag1_sign * (np.pi / 4)
+                        next1_x = robot1Position.x - robot1Speed * updateInterval * np.cos(zigzag1_angle)
+                        next1_y = robot1Position.y + robot1Speed * updateInterval * np.sin(zigzag1_angle)
+                        next1_position = Vector3(next1_x, next1_y, robot1Position.z)
 
-                        if (iteration % zigzag_period) == 0:
-                            zigzag_sign *= -1
+                        print(f"Trying to move to ({next1_x}, {next1_y}), Free?: {sim.checkPositionForObstacles(next1_position)}")
+
+                        if not sim.checkPositionForObstacles(next1_position):
+                            zigzag1_sign = -zigzag1_sign
+                            zigzag1_angle = (angle1 + zigzag1_sign * (np.pi / 4)) * 2 
+                            next1_x = robot1Position.x - robot1Speed * updateInterval * np.cos(zigzag1_angle)
+                            next1_y = robot1Position.y + robot1Speed * updateInterval * np.sin(zigzag1_angle)
+                            next1_position = Vector3(next1_x, next1_y, robot1Position.z)
+
+                            if not sim.checkPositionForObstacles(next1_position):
+                                next1_x = robot1Position.x + robot1Speed * updateInterval * np.cos(zigzag1_angle)
+                                next1_y = robot1Position.y + robot1Speed * updateInterval * np.sin(zigzag1_angle)
+                                next1_position = Vector3(next1_x, next1_y, robot1Position.z)
+                                if not sim.checkPositionForObstacles(next1_position):
+                                    next1_x = robot1Position.x + robot1Speed * updateInterval * np.cos(zigzag1_angle)
+                                    next1_y = robot1Position.y - robot1Speed * updateInterval * np.sin(zigzag1_angle)
+                                    next1_position = Vector3(next1_x, next1_y, robot1Position.z)
+                        
+                        robot1Position.x = next1_x
+                        robot1Position.y = next1_y
+
+                        if (iteration % zigzag1_period) == 0:
+                            zigzag1_sign *= -1
 
                     if iteration >= 100:
                         robot1StopFlag = True
                         print(f"Robot 1 stopped at: {robot1Position}")
 
                 if robot2Position and angle2 and robot2Speed is not None  and not robot2StopFlag:
-                    robot2Position.x += robot2Speed * updateInterval * np.cos(angle2)
-                    robot2Position.y += robot2Speed * updateInterval * np.sin(angle2)
-                    if iteration >= 40:
+                    windVector = sim.getCurrentWind(robot2Position)
+                    wind_array = np.array([windVector.x, windVector.y, windVector.z])
+
+                    if concentration2 > 0:
+
+                        if np.allclose(wind_array, [0, 0, 0]):
+                            robot2Position.x += robot2Speed * updateInterval
+                            robot2Position.y += 0
+                        else:
+                            inverse_wind = wind_array
+                            norm = np.linalg.norm(inverse_wind[:2])
+                            if norm == 0:
+                                robot2Position.x += robot2Speed * updateInterval
+                                robot2Position.y += 0
+                            else:
+                                direction = inverse_wind[:2] / norm
+                                robot2Position.x += robot2Speed * updateInterval * direction[0]
+                                robot2Position.y += robot2Speed * updateInterval * direction[1]
+                    else:
+                        zigzag2_angle = angle2 + zigzag2_sign * (np.pi / 4)
+                        next2_x = robot2Position.x - robot2Speed * updateInterval * np.cos(zigzag2_angle)
+                        next2_y = robot2Position.y + robot2Speed * updateInterval * np.sin(zigzag2_angle)
+                        next2_position = Vector3(next2_x, next2_y, robot2Position.z)
+
+                        print(f"Trying to move to ({next2_x}, {next2_y}), Free?: {sim.checkPositionForObstacles(next2_position)}")
+
+                        if not sim.checkPositionForObstacles(next2_position):
+                            zigzag2_sign = -zigzag2_sign
+                            zigzag2_angle = (angle2 + zigzag2_sign * (np.pi / 4)) * 2 
+                            next2_x = robot2Position.x - robot2Speed * updateInterval * np.cos(zigzag2_angle)
+                            next2_y = robot2Position.y + robot2Speed * updateInterval * np.sin(zigzag2_angle)
+                            next2_position = Vector3(next2_x, next2_y, robot1Position.z)
+
+                            if not sim.checkPositionForObstacles(next2_position):
+                                next2_x = robot2Position.x + robot2Speed * updateInterval * np.cos(zigzag2_angle)
+                                next2_y = robot2Position.y + robot2Speed * updateInterval * np.sin(zigzag2_angle)
+                                next2_position = Vector3(next2_x, next2_y, robot1Position.z)
+                                if not sim.checkPositionForObstacles(next2_position):
+                                    next2_x = robot2Position.x + robot2Speed * updateInterval * np.cos(zigzag2_angle)
+                                    next2_y = robot2Position.y - robot2Speed * updateInterval * np.sin(zigzag2_angle)
+                                    next2_position = Vector3(next2_x, next2_y, robot2Position.z)
+                        
+                        robot2Position.x = next2_x
+                        robot2Position.y = next2_y
+
+                        if (iteration % zigzag2_period) == 0:
+                            zigzag2_sign *= -1
+
+                    if iteration >= 100:
                         robot2StopFlag = True
                         print(f"Robot 2 reached the target position: {robot2Position}")
 
                 if robot3Position and angle3 and robot3Speed is not None and not robot3StopFlag:
-                    robot3Position.x += robot3Speed * updateInterval * np.cos(angle3)
-                    robot3Position.y += robot3Speed * updateInterval * np.sin(angle3)
-                    if iteration >= 40:
+                    windVector = sim.getCurrentWind(robot3Position)
+                    wind_array = np.array([windVector.x, windVector.y, windVector.z])
+
+                    if concentration3 > 0:
+
+                        if np.allclose(wind_array, [0, 0, 0]):
+                            robot3Position.x += robot3Speed * updateInterval
+                            robot3Position.y += 0
+                        else:
+                            inverse_wind = wind_array
+                            norm = np.linalg.norm(inverse_wind[:2])
+                            if norm == 0:
+                                robot3Position.x += robot3Speed * updateInterval
+                                robot3Position.y += 0
+                            else:
+                                direction = inverse_wind[:2] / norm
+                                robot3Position.x += robot3Speed * updateInterval * direction[0]
+                                robot3Position.y += robot3Speed * updateInterval * direction[1]
+                    else:
+                        zigzag3_angle = angle3 + zigzag3_sign * (np.pi / 4)
+                        next3_x = robot3Position.x - robot3Speed * updateInterval * np.cos(zigzag3_angle)
+                        next3_y = robot3Position.y + robot3Speed * updateInterval * np.sin(zigzag3_angle)
+                        next3_position = Vector3(next3_x, next3_y, robot3Position.z)
+
+                        print(f"Trying to move to ({next3_x}, {next3_y}), Free?: {sim.checkPositionForObstacles(next3_position)}")
+
+                        if not sim.checkPositionForObstacles(next3_position):
+                            zigzag3_sign = -zigzag3_sign
+                            zigzag3_angle = (angle3 + zigzag3_sign * (np.pi / 4)) * 2 
+                            next3_x = robot3Position.x - robot3Speed * updateInterval * np.cos(zigzag3_angle)
+                            next3_y = robot3Position.y + robot3Speed * updateInterval * np.sin(zigzag3_angle)
+                            next3_position = Vector3(next3_x, next3_y, robot1Position.z)
+
+                            if not sim.checkPositionForObstacles(next3_position):
+                                next3_x = robot3Position.x + robot3Speed * updateInterval * np.cos(zigzag3_angle)
+                                next3_y = robot3Position.y + robot3Speed * updateInterval * np.sin(zigzag3_angle)
+                                next3_position = Vector3(next3_x, next3_y, robot1Position.z)
+                                if not sim.checkPositionForObstacles(next3_position):
+                                    next3_x = robot3Position.x + robot3Speed * updateInterval * np.cos(zigzag3_angle)
+                                    next3_y = robot3Position.y - robot3Speed * updateInterval * np.sin(zigzag3_angle)
+                                    next3_position = Vector3(next3_x, next3_y, robot3Position.z)
+                        
+                        robot3Position.x = next3_x
+                        robot3Position.y = next3_y
+
+                        if (iteration % zigzag3_period) == 0:
+                            zigzag3_sign *= -1
+
+                    if iteration >= 100:
                         robot3StopFlag = True
                         print(f"Robot 3 reached the target position: {robot3Position}")
 
                 if robot4Position and angle4 and robot4Speed is not None and not robot4StopFlag:
-                    robot4Position.x += robot4Speed * updateInterval * np.cos(angle4)
-                    robot4Position.y += robot4Speed * updateInterval * np.sin(angle4)
-                    if iteration >= 40:
+                    windVector = sim.getCurrentWind(robot4Position)
+                    wind_array = np.array([windVector.x, windVector.y, windVector.z])
+
+                    if concentration4 > 0:
+
+                        if np.allclose(wind_array, [0, 0, 0]):
+                            robot4Position.x += robot4Speed * updateInterval
+                            robot4Position.y += 0
+                        else:
+                            inverse_wind = wind_array
+                            norm = np.linalg.norm(inverse_wind[:2])
+                            if norm == 0:
+                                robot4Position.x += robot4Speed * updateInterval
+                                robot4Position.y += 0
+                            else:
+                                direction = inverse_wind[:2] / norm
+                                robot4Position.x += robot4Speed * updateInterval * direction[0]
+                                robot4Position.y += robot4Speed * updateInterval * direction[1]
+                    else:
+                        zigzag4_angle = angle4 + zigzag4_sign * (np.pi / 4)
+                        next4_x = robot4Position.x - robot4Speed * updateInterval * np.cos(zigzag4_angle)
+                        next4_y = robot4Position.y + robot4Speed * updateInterval * np.sin(zigzag4_angle)
+                        next4_position = Vector3(next4_x, next4_y, robot1Position.z)
+
+                        print(f"Trying to move to ({next4_x}, {next4_y}), Free?: {sim.checkPositionForObstacles(next4_position)}")
+
+                        if not sim.checkPositionForObstacles(next4_position):
+                            zigzag4_sign = -zigzag4_sign
+                            zigzag4_angle = (angle4 + zigzag4_sign * (np.pi / 4)) * 2 
+                            next4_x = robot4Position.x - robot4Speed * updateInterval * np.cos(zigzag4_angle)
+                            next4_y = robot4Position.y + robot4Speed * updateInterval * np.sin(zigzag4_angle)
+                            next4_position = Vector3(next4_x, next4_y, robot1Position.z)
+
+                            if not sim.checkPositionForObstacles(next4_position):
+                                next4_x = robot4Position.x + robot4Speed * updateInterval * np.cos(zigzag4_angle)
+                                next4_y = robot4Position.y + robot4Speed * updateInterval * np.sin(zigzag4_angle)
+                                next4_position = Vector3(next4_x, next4_y, robot1Position.z)
+                                if not sim.checkPositionForObstacles(next4_position):
+                                    next4_x = robot4Position.x + robot4Speed * updateInterval * np.cos(zigzag4_angle)
+                                    next4_y = robot4Position.y - robot4Speed * updateInterval * np.sin(zigzag4_angle)
+                                    next4_position = Vector3(next4_x, next4_y, robot4Position.z)
+                        
+                        robot4Position.x = next4_x
+                        robot4Position.y = next4_y
+
+                        if (iteration % zigzag4_period) == 0:
+                            zigzag4_sign *= -1
+
+                    if iteration >= 100:
                         robot4StopFlag = True
                         print(f"Robot 4 reached the target position: {robot4Position}")
                 
-                if robot1StopFlag: 
+                if robot1StopFlag and robot2StopFlag and robot3StopFlag and robot4StopFlag: 
                     break
             else:
                 time.sleep(0.01)
