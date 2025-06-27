@@ -572,6 +572,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
 
     print(robots)
 
+    robot1Iterations = int(robots[0]["iterations"])
     robot1Speed = float(robots[0]["robotSpeed"])
     robot1Xposition = float(robots[0]["robotXlocation"])
     robot1Yposition = float(robots[0]["robotYlocation"])
@@ -580,6 +581,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
     initialRobot1Position = Vector3(robot1Xposition,robot1Yposition, height)
 
     if len(robots) > 1:
+        robot2Iterations = int(robots[1]["iterations"])
         robot2Speed = float(robots[1]["robotSpeed"])
         robot2Xposition = float(robots[1]["robotXlocation"])
         robot2Yposition = float(robots[1]["robotYlocation"])
@@ -588,12 +590,14 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
         initialRobot2Position = Vector3(robot2Xposition,robot2Yposition, height)
 
     else:
+        robot2Iterations = 0 
         initialRobot2Position = None
         robot2Speed = robot2Xposition = robot2Yposition = angle2 = None
     
-    print(f"robot2: speed: {robot2Speed}, X position: {robot2Xposition}, Y position: {robot2Yposition}, angle: {angle2}")
+    print(f"robot2: speed: {robot2Speed}, X position: {robot2Xposition}, Y position: {robot2Yposition}, angle: {angle2}, iterations: {robot2Iterations}")
 
     if len(robots) > 2:
+        robot3Iterations = int(robots[2]["iterations"])
         robot3Speed = float(robots[2]["robotSpeed"])
         robot3Xposition = float(robots[2]["robotXlocation"])
         robot3Yposition = float(robots[2]["robotYlocation"])
@@ -602,12 +606,14 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
         initialRobot3Position = Vector3(robot3Xposition,robot3Yposition, height)
 
     else:
+        robot3Iterations = 0 
         initialRobot3Position  = None
         robot3Speed = robot3Xposition = robot3Yposition = angle3 = None
     print(f"robot3: speed: {robot3Speed}, X position: {robot3Xposition}, Y position: {robot3Yposition}, angle: {angle3}")
 
 
     if len(robots) > 3:
+        robot4Iterations = int(robots[3]["iterations"])
         robot4Speed = float(robots[3]["robotSpeed"])
         robot4Xposition = float(robots[3]["robotXlocation"])
         robot4Yposition = float(robots[3]["robotYlocation"])
@@ -616,6 +622,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
         initialRobot4Position = Vector3(robot4Xposition,robot4Yposition, height)
 
     else:
+        robot4Iterations = 0 
         initialRobot4Position = None
         robot4Speed = robot4Xposition = robot4Yposition = angle4 = None
     print(f"robot4: speed: {robot4Speed}, X position: {robot4Xposition}, Y position: {robot4Yposition}, angle: {angle4}")
@@ -729,6 +736,9 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                     i = int((initialRobot4Position.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
                     image = cv2.circle(image, (i, j), 4,(255,255,255), -1)
                     cv2.putText(image, "R4", (i - 30, j), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+
+    def normalize_angle(angle):
+        return (angle + np.pi) % (2 * np.pi) - np.pi
 
     def main():
         updateInterval = 0.5 # segundos
@@ -859,7 +869,10 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                                 robot1Position.x += robot1Speed * updateInterval * direction[0]
                                 robot1Position.y += robot1Speed * updateInterval * direction[1]
                     else:
-                        zigzag1_angle = angle1 + zigzag1_sign * (np.pi / 4)
+                        zigzag1_angle = normalize_angle(angle1 + zigzag1_sign * (np.pi / 4))
+
+                        if (zigzag1_sign == -1):
+                            zigzag1_angle = normalize_angle(zigzag1_angle*2)
                         next1_x = robot1Position.x - robot1Speed * updateInterval * np.cos(zigzag1_angle)
                         next1_y = robot1Position.y + robot1Speed * updateInterval * np.sin(zigzag1_angle)
                         next1_position = Vector3(next1_x, next1_y, robot1Position.z)
@@ -868,7 +881,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
 
                         if not sim.checkPositionForObstacles(next1_position):
                             zigzag1_sign = -zigzag1_sign
-                            zigzag1_angle = (angle1 + zigzag1_sign * (np.pi / 4)) * 2 
+                            zigzag1_angle = normalize_angle(angle1 + zigzag1_sign * (np.pi / 4))
                             next1_x = robot1Position.x - robot1Speed * updateInterval * np.cos(zigzag1_angle)
                             next1_y = robot1Position.y + robot1Speed * updateInterval * np.sin(zigzag1_angle)
                             next1_position = Vector3(next1_x, next1_y, robot1Position.z)
@@ -888,7 +901,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                         if (iteration % zigzag1_period) == 0:
                             zigzag1_sign *= -1
 
-                    if iteration >= 100:
+                    if iteration >= robot1Iterations:
                         robot1StopFlag = True
                         print(f"Robot 1 stopped at: {robot1Position}")
 
@@ -912,7 +925,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                                 robot2Position.x += robot2Speed * updateInterval * direction[0]
                                 robot2Position.y += robot2Speed * updateInterval * direction[1]
                     else:
-                        zigzag2_angle = angle2 + zigzag2_sign * (np.pi / 4)
+                        zigzag2_angle = normalize_angle(angle2 + zigzag2_sign * (np.pi / 4))
                         next2_x = robot2Position.x - robot2Speed * updateInterval * np.cos(zigzag2_angle)
                         next2_y = robot2Position.y + robot2Speed * updateInterval * np.sin(zigzag2_angle)
                         next2_position = Vector3(next2_x, next2_y, robot2Position.z)
@@ -921,7 +934,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
 
                         if not sim.checkPositionForObstacles(next2_position):
                             zigzag2_sign = -zigzag2_sign
-                            zigzag2_angle = (angle2 + zigzag2_sign * (np.pi / 4)) * 2 
+                            zigzag2_angle = normalize_angle(angle2 + zigzag2_sign * (np.pi / 4))
                             next2_x = robot2Position.x - robot2Speed * updateInterval * np.cos(zigzag2_angle)
                             next2_y = robot2Position.y + robot2Speed * updateInterval * np.sin(zigzag2_angle)
                             next2_position = Vector3(next2_x, next2_y, robot1Position.z)
@@ -941,7 +954,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                         if (iteration % zigzag2_period) == 0:
                             zigzag2_sign *= -1
 
-                    if iteration >= 100:
+                    if iteration >= robot2Iterations:
                         robot2StopFlag = True
                         print(f"Robot 2 reached the target position: {robot2Position}")
 
@@ -965,7 +978,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                                 robot3Position.x += robot3Speed * updateInterval * direction[0]
                                 robot3Position.y += robot3Speed * updateInterval * direction[1]
                     else:
-                        zigzag3_angle = angle3 + zigzag3_sign * (np.pi / 4)
+                        zigzag3_angle = normalize_angle(angle3 + zigzag3_sign * (np.pi / 4))
                         next3_x = robot3Position.x - robot3Speed * updateInterval * np.cos(zigzag3_angle)
                         next3_y = robot3Position.y + robot3Speed * updateInterval * np.sin(zigzag3_angle)
                         next3_position = Vector3(next3_x, next3_y, robot3Position.z)
@@ -974,7 +987,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
 
                         if not sim.checkPositionForObstacles(next3_position):
                             zigzag3_sign = -zigzag3_sign
-                            zigzag3_angle = (angle3 + zigzag3_sign * (np.pi / 4)) * 2 
+                            zigzag3_angle = normalize_angle(angle3 + zigzag3_sign * (np.pi / 4)) 
                             next3_x = robot3Position.x - robot3Speed * updateInterval * np.cos(zigzag3_angle)
                             next3_y = robot3Position.y + robot3Speed * updateInterval * np.sin(zigzag3_angle)
                             next3_position = Vector3(next3_x, next3_y, robot1Position.z)
@@ -994,7 +1007,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                         if (iteration % zigzag3_period) == 0:
                             zigzag3_sign *= -1
 
-                    if iteration >= 100:
+                    if iteration >= robot3Iterations:
                         robot3StopFlag = True
                         print(f"Robot 3 reached the target position: {robot3Position}")
 
@@ -1018,7 +1031,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                                 robot4Position.x += robot4Speed * updateInterval * direction[0]
                                 robot4Position.y += robot4Speed * updateInterval * direction[1]
                     else:
-                        zigzag4_angle = angle4 + zigzag4_sign * (np.pi / 4)
+                        zigzag4_angle = normalize_angle(angle4 + zigzag4_sign * (np.pi / 4))
                         next4_x = robot4Position.x - robot4Speed * updateInterval * np.cos(zigzag4_angle)
                         next4_y = robot4Position.y + robot4Speed * updateInterval * np.sin(zigzag4_angle)
                         next4_position = Vector3(next4_x, next4_y, robot1Position.z)
@@ -1027,7 +1040,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
 
                         if not sim.checkPositionForObstacles(next4_position):
                             zigzag4_sign = -zigzag4_sign
-                            zigzag4_angle = (angle4 + zigzag4_sign * (np.pi / 4)) * 2 
+                            zigzag4_angle = normalize_angle(angle4 + zigzag4_sign * (np.pi / 4))
                             next4_x = robot4Position.x - robot4Speed * updateInterval * np.cos(zigzag4_angle)
                             next4_y = robot4Position.y + robot4Speed * updateInterval * np.sin(zigzag4_angle)
                             next4_position = Vector3(next4_x, next4_y, robot1Position.z)
@@ -1047,7 +1060,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                         if (iteration % zigzag4_period) == 0:
                             zigzag4_sign *= -1
 
-                    if iteration >= 100:
+                    if iteration >= robot4Iterations:
                         robot4StopFlag = True
                         print(f"Robot 4 reached the target position: {robot4Position}")
                 
