@@ -1086,4 +1086,172 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
 
     return JSONResponse(content={"frames": simulation_data_serializable, "robotSim_id": robotSim_id + 1}) 
 
+@app.get("/pso_simmulation")
+def pso(username: str, simulationNumber: str, height: float, robots):
+    if isinstance(robots, str):
+        robots = json.loads(robots)
 
+    print(robots)
+
+    robot1Iterations = int(robots[0]["iterations"])
+    robot1Speed = float(robots[0]["robotSpeed"])
+    robot1Xposition = float(robots[0]["robotXlocation"])
+    robot1Yposition = float(robots[0]["robotYlocation"])
+    
+    initialRobot1Position = Vector3(robot1Xposition,robot1Yposition, height)
+
+    if len(robots) > 1:
+        robot2Iterations = int(robots[1]["iterations"])
+        robot2Speed = float(robots[1]["robotSpeed"])
+        robot2Xposition = float(robots[1]["robotXlocation"])
+        robot2Yposition = float(robots[1]["robotYlocation"])
+
+        initialRobot2Position = Vector3(robot2Xposition,robot2Yposition, height)
+
+    else:
+        robot2Iterations = 0 
+        initialRobot2Position = None
+        robot2Speed = robot2Xposition = robot2Yposition  = None
+    
+    print(f"robot2: speed: {robot2Speed}, X position: {robot2Xposition}, Y position: {robot2Yposition}")
+
+    if len(robots) > 2:
+        robot3Iterations = int(robots[2]["iterations"])
+        robot3Speed = float(robots[2]["robotSpeed"])
+        robot3Xposition = float(robots[2]["robotXlocation"])
+        robot3Yposition = float(robots[2]["robotYlocation"])
+
+        initialRobot3Position = Vector3(robot3Xposition,robot3Yposition, height)
+
+    else:
+        robot3Iterations = 0 
+        initialRobot3Position  = None
+        robot3Speed = robot3Xposition = robot3Yposition  = None
+    print(f"robot3: speed: {robot3Speed}, X position: {robot3Xposition}, Y position: {robot3Yposition}")
+
+
+    if len(robots) > 3:
+        robot4Iterations = int(robots[3]["iterations"])
+        robot4Speed = float(robots[3]["robotSpeed"])
+        robot4Xposition = float(robots[3]["robotXlocation"])
+        robot4Yposition = float(robots[3]["robotYlocation"])
+
+        initialRobot4Position = Vector3(robot4Xposition,robot4Yposition, height)
+
+    else:
+        robot4Iterations = 0 
+        initialRobot4Position = None
+        robot4Speed = robot4Xposition = robot4Yposition = angle4 = None
+    print(f"robot4: speed: {robot4Speed}, X position: {robot4Xposition}, Y position: {robot4Yposition}")
+    
+    simulation_dir = username + "_sim_" + simulationNumber
+    scenario_path = os.path.join("/src/install/test_env/share/test_env/scenarios",simulation_dir)
+    simulation_path = os.path.join(scenario_path,"gas_simulations/sim1")
+    ocuppancy_path = os.path.join(scenario_path,"OccupancyGrid3D.csv")
+
+    simulation_name = username + "_" + simulationNumber
+
+    sim = Simulation(simulation_path, \
+                    ocuppancy_path)
+
+    imageSizeFactor = 5  
+    max_ppm = 7.0
+
+    simulation_data = []
+
+    def capture_frame_for_gif(image):
+        iteration = sim.getCurrentIteration()
+        
+        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        pil_img = Image.fromarray(rgb_image)
+
+        buffered = io.BytesIO()
+        pil_img.save(buffered, format="PNG") 
+        compressed = zlib.compress(buffered.getvalue())
+        img_str = base64.b64encode(compressed).decode('utf-8')
+
+        print(f"Captured frame for GIF in iteration: {iteration}.")
+
+
+        
+
+        response = requests.post('http://webserver:3000/uploadSimulationResults', json={
+                'simulation': simulation_name,
+                'type': 'robot',
+                'gif': img_str,
+                'height': height,
+                'iteration': iteration,
+                'robotSim_id': robotSim_id + 1 
+            })
+        global id 
+        if response.status_code == 200:
+            print("GIF sent successfully.")
+            id = response.json().get('id')
+
+    def vector3_to_dict(v):
+        return {"x": v.x, "y": v.y, "z": v.z}
+
+    def capture_simulation_data(robot_position, concentration, wind_speed, iteration, robot):
+        frame_data = {
+            "robot_position": Vector3(robot_position.x, robot_position.y, robot_position.z),
+            "concentration": concentration,
+            "wind_speed": wind_speed,
+            "iteration": iteration,
+            "robot": robot
+        }
+
+        simulation_data.append(frame_data)
+
+
+    def markPreviousPositions(previous1Positions,previous2Positions,previous3Positions,previous4Positions,
+        initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
+        image):
+
+        for pos in previous1Positions:
+            j = int((pos.x - sim.env_min.x) / (sim.env_max.x - sim.env_min.x) * image.shape[0])
+            i = int((pos.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
+            cv2.rectangle(image, (i, j-1), (i, j), (255,255,255), -1)
+
+        for pos in previous2Positions:
+            j = int((pos.x - sim.env_min.x) / (sim.env_max.x - sim.env_min.x) * image.shape[0])
+            i = int((pos.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
+            cv2.rectangle(image, (i, j-1), (i, j), (255,255,255), -1)
+
+        for pos in previous3Positions:
+            j = int((pos.x - sim.env_min.x) / (sim.env_max.x - sim.env_min.x) * image.shape[0])
+            i = int((pos.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
+            cv2.rectangle(image, (i, j-1), (i, j), (255,255,255), -1)
+
+        for pos in previous4Positions:
+            j = int((pos.x - sim.env_min.x) / (sim.env_max.x - sim.env_min.x) * image.shape[0])
+            i = int((pos.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
+            cv2.rectangle(image, (i, j-1), (i, j), (255,255,255), -1)
+            
+
+        j = int((initialRobot1Position.x - sim.env_min.x) / (sim.env_max.x - sim.env_min.x) * image.shape[0])
+        i = int((initialRobot1Position.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
+        image = cv2.circle(image, (i, j), 4,(255,255,255), -1)
+        cv2.putText(image, "R1", (i - 30, j), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+
+
+        if initialRobot2Position is not None:
+            j = int((initialRobot2Position.x - sim.env_min.x) / (sim.env_max.x - sim.env_min.x) * image.shape[0])
+            i = int((initialRobot2Position.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
+            image = cv2.circle(image, (i, j), 4,(255,255,255), -1)
+            cv2.putText(image, "R2", (i - 30, j), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+
+
+            if initialRobot3Position is not None:
+                j = int((initialRobot3Position.x - sim.env_min.x) / (sim.env_max.x - sim.env_min.x) * image.shape[0])
+                i = int((initialRobot3Position.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
+                image = cv2.circle(image, (i, j), 4,(255,255,255), -1)
+                cv2.putText(image, "R3", (i - 30, j), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+
+
+                if initialRobot4Position is not None:
+                    j = int((initialRobot4Position.x - sim.env_min.x) / (sim.env_max.x - sim.env_min.x) * image.shape[0])
+                    i = int((initialRobot4Position.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
+                    image = cv2.circle(image, (i, j), 4,(255,255,255), -1)
+                    cv2.putText(image, "R4", (i - 30, j), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+
+   
