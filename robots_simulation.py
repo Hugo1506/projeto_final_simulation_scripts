@@ -16,7 +16,9 @@ import json
 import requests
 import base64
 import sys
-
+from PBest import PBest
+from GBest import GBest
+import rclpy
 app = FastAPI()
 
 
@@ -1099,6 +1101,7 @@ def pso(username: str, simulationNumber: str, height: float, robots):
     robot1Yposition = float(robots[0]["robotYlocation"])
     
     initialRobot1Position = Vector3(robot1Xposition,robot1Yposition, height)
+    pbest1 = PBest(initialRobot1Position,0.0)
 
     if len(robots) > 1:
         robot2Iterations = int(robots[1]["iterations"])
@@ -1112,7 +1115,7 @@ def pso(username: str, simulationNumber: str, height: float, robots):
         robot2Iterations = 0 
         initialRobot2Position = None
         robot2Speed = robot2Xposition = robot2Yposition  = None
-    
+    pbest2 = PBest(initialRobot2Position,0.0)
     print(f"robot2: speed: {robot2Speed}, X position: {robot2Xposition}, Y position: {robot2Yposition}")
 
     if len(robots) > 2:
@@ -1127,8 +1130,9 @@ def pso(username: str, simulationNumber: str, height: float, robots):
         robot3Iterations = 0 
         initialRobot3Position  = None
         robot3Speed = robot3Xposition = robot3Yposition  = None
+    pbest3 = PBest(initialRobot3Position,0.0) 
     print(f"robot3: speed: {robot3Speed}, X position: {robot3Xposition}, Y position: {robot3Yposition}")
-
+    
 
     if len(robots) > 3:
         robot4Iterations = int(robots[3]["iterations"])
@@ -1142,8 +1146,12 @@ def pso(username: str, simulationNumber: str, height: float, robots):
         robot4Iterations = 0 
         initialRobot4Position = None
         robot4Speed = robot4Xposition = robot4Yposition = angle4 = None
+    pbest4 = PBest(initialRobot4Position,0.0)
     print(f"robot4: speed: {robot4Speed}, X position: {robot4Xposition}, Y position: {robot4Yposition}")
     
+
+    
+
     simulation_dir = username + "_sim_" + simulationNumber
     scenario_path = os.path.join("/src/install/test_env/share/test_env/scenarios",simulation_dir)
     simulation_path = os.path.join(scenario_path,"gas_simulations/sim1")
@@ -1158,6 +1166,36 @@ def pso(username: str, simulationNumber: str, height: float, robots):
     max_ppm = 7.0
 
     simulation_data = []
+    def calculate_average_position(robot1position, robot2position, robot3position, robot4position):
+        valid_positions = []
+
+        if robot1position is not None:
+            valid_positions.append(robot1position)
+        if robot2position is not None:
+            valid_positions.append(robot2position)
+        if robot3position is not None:
+            valid_positions.append(robot3position)
+        if robot4position is not None:
+            valid_positions.append(robot4position)
+
+        if not valid_positions:
+            return None
+
+        average_position = sum(valid_positions) / len(valid_positions)
+
+        return average_position
+    
+    average_pointX = calculate_average_position(robot1Xposition, robot2Xposition, robot3Xposition, robot4Xposition)
+    average_pointY = calculate_average_position(robot1Yposition, robot2Yposition, robot3Yposition, robot4Yposition)
+    
+    average_point = Vector3(average_pointX,average_pointY,height)
+    rclpy.init()
+    gbest = GBest(average_point, 0.0)
+    rclpy.shutdown()
+
+    print(gbest.get_gbest_data())
+    
+
 
     def capture_frame_for_gif(image):
         iteration = sim.getCurrentIteration()
@@ -1254,4 +1292,123 @@ def pso(username: str, simulationNumber: str, height: float, robots):
                     image = cv2.circle(image, (i, j), 4,(255,255,255), -1)
                     cv2.putText(image, "R4", (i - 30, j), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
-   
+    def main():
+        updateInterval = 0.5 # segundos
+        sim.playSimulation(0, updateInterval)
+
+        robot1Position = initialRobot1Position
+        robot2Position = initialRobot2Position if robot2Speed is not None else None
+        robot3Position = initialRobot3Position if robot3Speed is not None else None
+        robot4Position = initialRobot4Position if robot4Speed is not None else None
+
+        previousRobot1Positions = []
+        previousRobot2Positions = []
+        previousRobot3Positions = []
+        previousRobot4Positions = []
+
+        robot1StopFlag = False
+
+        # if the postion doesnt exist the robot has the stop flag set to True if not sets it to false
+        robot2StopFlag = robot2Position is None
+        robot3StopFlag = robot3Position is None
+        robot4StopFlag = robot4Position is None
+
+
+        response = requests.get('http://webserver:3000/getRobotSimulationID', params={
+            'simulation': simulation_name
+        })
+
+        if response.status_code == 200:
+            global robotSim_id
+            robotSim_id = response.json().get('id')
+            if robotSim_id is None:
+                robotSim_id = 0
+            print(f"Robot simulation ID: {robotSim_id}")
+
+
+  
+
+        global frames
+        frames = []
+
+        while sim.getCurrentIteration() != 0:
+            time.sleep(0.01)
+        
+        last_iteration = -1
+
+
+
+        while (True):
+            iteration = sim.getCurrentIteration()
+            if iteration > last_iteration:
+                last_iteration = iteration
+                print(f"Iteration: {iteration} robot1Position: {robot1Position}")
+
+                previousRobot1Positions.append(Vector3(robot1Position.x, robot1Position.y, robot1Position.z))
+                if robot2Position is not None:
+                    previousRobot2Positions.append(Vector3(robot2Position.x, robot2Position.y, robot2Position.z))
+                    if robot3Position is not None:
+                        previousRobot3Positions.append(Vector3(robot3Position.x, robot3Position.y, robot3Position.z))                
+                        if robot4Position is not None:
+                            previousRobot4Positions.append(Vector3(robot4Position.x, robot4Position.y, robot4Position.z))
+                
+
+
+                concentration1 = sim.getCurrentConcentration(robot1Position)
+                print(f"Location: {robot1Position}")
+                print(f"Concentration at robot1 position: {concentration1} ppm")
+
+                concentration2 = concentration3 = concentration4 = 0 
+
+                capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), iteration, 1)
+                if robot2Position is not None:
+                    concentration2 = sim.getCurrentConcentration(robot2Position)
+                    capture_simulation_data(robot2Position, concentration2, sim.getCurrentWind(robot2Position), iteration, 2)
+                    if robot3Position is not None:
+                        concentration3 = sim.getCurrentConcentration(robot3Position)
+                        capture_simulation_data(robot3Position,concentration3, sim.getCurrentWind(robot3Position), iteration, 3)
+                        if robot4Position is not None:
+                            concentration4 = sim.getCurrentConcentration(robot4Position)
+                            capture_simulation_data(robot4Position, concentration4, sim.getCurrentWind(robot4Position), iteration, 4)
+            
+
+
+                map = sim.generateConcentrationMap2D(iteration, height, True)
+                map_scaled = map * (255.0 / max_ppm)
+                formatted_map = np.array(np.clip(map_scaled, 0, 255), dtype=np.uint8)
+
+                base_image = cv2.applyColorMap(formatted_map, cv2.COLORMAP_JET)
+                block(map, base_image)
+
+                newshape = (imageSizeFactor * base_image.shape[1], imageSizeFactor * base_image.shape[0])
+                heatmap = cv2.resize(base_image, newshape)
+
+                markPreviousPositions(previousRobot1Positions, previousRobot2Positions,previousRobot3Positions,previousRobot4Positions,
+                                        initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
+                                        heatmap)
+
+                capture_frame_for_gif(heatmap)
+
+                if robot1Position is not None and not robot1StopFlag:
+                    break
+
+
+        
+    main()
+
+    simulation_data_serializable = []
+
+
+    for frame in simulation_data:
+        simulation_data_serializable.append({
+            "robot_position": vector3_to_dict(frame["robot_position"]),
+            "concentration": frame["concentration"],
+            "wind_speed": vector3_to_dict(frame["wind_speed"]),
+            "iteration": frame["iteration"],
+            "robot": frame["robot"]
+        })
+
+
+    return JSONResponse(content={"frames": simulation_data_serializable, "robotSim_id": robotSim_id + 1}) 
+
+
