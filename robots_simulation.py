@@ -19,6 +19,8 @@ import sys
 from PBest import PBest
 from GBest import GBest
 import rclpy
+from GBestSubscriber import retrieve_gbest_position
+
 app = FastAPI()
 
 
@@ -1189,12 +1191,16 @@ def pso(username: str, simulationNumber: str, height: float, robots):
     average_pointY = calculate_average_position(robot1Yposition, robot2Yposition, robot3Yposition, robot4Yposition)
     
     average_point = Vector3(average_pointX,average_pointY,height)
+
+    print("antes")
     rclpy.init()
     gbest = GBest(average_point, 0.0)
+    print("antes do subscriber")
+    gbest_position = retrieve_gbest_position()
+    print(f"Received GBest position from subscriber: {gbest_position}")
+    print("depois do subscriber")
     rclpy.shutdown()
-
-    print(gbest.get_gbest_data())
-    
+    print("depois")
 
 
     def capture_frame_for_gif(image):
