@@ -1,15 +1,20 @@
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy
 from geometry_msgs.msg import Point
 
 class GBestSubscriber(Node):
     def __init__(self):
         super().__init__('gbest_subscriber_node')
+        qos_profile = QoSProfile(
+            depth=1,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL
+        )
         self.subscription = self.create_subscription(
             Point,
             '/gbest_topic/position',
             self.listener_callback,
-            10
+            qos_profile
         )
         self.gbest_position = None
 

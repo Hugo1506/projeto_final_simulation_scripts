@@ -1104,6 +1104,7 @@ def pso(username: str, simulationNumber: str, height: float, robots):
     
     initialRobot1Position = Vector3(robot1Xposition,robot1Yposition, height)
     pbest1 = PBest(initialRobot1Position,0.0)
+    robot1Velocity = Vector3(0.0, 0.0, 0.0)
 
     if len(robots) > 1:
         robot2Iterations = int(robots[1]["iterations"])
@@ -1118,6 +1119,7 @@ def pso(username: str, simulationNumber: str, height: float, robots):
         initialRobot2Position = None
         robot2Speed = robot2Xposition = robot2Yposition  = None
     pbest2 = PBest(initialRobot2Position,0.0)
+    robot2Velocity = Vector3(0.0, 0.0, 0.0)
     print(f"robot2: speed: {robot2Speed}, X position: {robot2Xposition}, Y position: {robot2Yposition}")
 
     if len(robots) > 2:
@@ -1133,6 +1135,7 @@ def pso(username: str, simulationNumber: str, height: float, robots):
         initialRobot3Position  = None
         robot3Speed = robot3Xposition = robot3Yposition  = None
     pbest3 = PBest(initialRobot3Position,0.0) 
+    robot3Velocity = Vector3(0.0, 0.0, 0.0)
     print(f"robot3: speed: {robot3Speed}, X position: {robot3Xposition}, Y position: {robot3Yposition}")
     
 
@@ -1149,6 +1152,7 @@ def pso(username: str, simulationNumber: str, height: float, robots):
         initialRobot4Position = None
         robot4Speed = robot4Xposition = robot4Yposition = angle4 = None
     pbest4 = PBest(initialRobot4Position,0.0)
+    robot4Velocity = Vector3(0.0, 0.0, 0.0)
     print(f"robot4: speed: {robot4Speed}, X position: {robot4Xposition}, Y position: {robot4Yposition}")
     
 
@@ -1192,15 +1196,10 @@ def pso(username: str, simulationNumber: str, height: float, robots):
     
     average_point = Vector3(average_pointX,average_pointY,height)
 
-    print("antes")
     rclpy.init()
     gbest = GBest(average_point, 0.0)
-    print("antes do subscriber")
     gbest_position = retrieve_gbest_position()
-    print(f"Received GBest position from subscriber: {gbest_position}")
-    print("depois do subscriber")
-    rclpy.shutdown()
-    print("depois")
+    
 
 
     def capture_frame_for_gif(image):
@@ -1341,7 +1340,10 @@ def pso(username: str, simulationNumber: str, height: float, robots):
             time.sleep(0.01)
         
         last_iteration = -1
-
+        
+        w = 0.7      
+        c1 = 1.5   
+        c2 = 1.5  
 
 
         while (True):
@@ -1396,14 +1398,51 @@ def pso(username: str, simulationNumber: str, height: float, robots):
                 capture_frame_for_gif(heatmap)
 
                 if robot1Position is not None and not robot1StopFlag:
-                    break
+                    print("ok")
+                    if concentration1 > pbest1.get_concentration():
+                        pbest1.update_pbest(robot1Position,concentration1)
+                    
+                    gbest_position = gbest.position
 
+                    r1 = np.random.rand()
+                    r2 = np.random.rand()
+
+                    pbest_diff = Vector3(
+                        pbest1.position.x - robot1Position.x,
+                        pbest1.position.y - robot1Position.y,
+                        0
+                    )
+                    gbest_diff = Vector3(
+                        gbest_position.x - robot1Position.x,
+                        gbest_position.y - robot1Position.y,
+                        0
+                    )
+                    # Update velocity
+                    robot1Velocity.x = (w * robot1Velocity.x +
+                                        c1 * r1 * pbest_diff.x +
+                                        c2 * r2 * gbest_diff.x)
+                    robot1Velocity.y = (w * robot1Velocity.y +
+                                        c1 * r1 * pbest_diff.y +
+                                        c2 * r2 * gbest_diff.y)
+
+                    speed = np.sqrt(robot1Velocity.x**2 + robot1Velocity.y**2)
+                    if speed > robot1Speed:
+                        robot1Velocity.x = (robot1Velocity.x / speed) * robot1Speed
+                        robot1Velocity.y = (robot1Velocity.y / speed) * robot1Speed
+
+                    robot1Position.x += robot1Velocity.x * updateInterval
+                    robot1Position.y += robot1Velocity.y * updateInterval
+
+                    if iteration > robot1Iterations:
+                        robot1StopFlag = True
+
+                    if robot1StopFlag and robot2StopFlag and robot3StopFlag and robot4StopFlag:
+                        break
 
         
     main()
-
     simulation_data_serializable = []
-
+    rclpy.shutdown()
 
     for frame in simulation_data:
         simulation_data_serializable.append({
