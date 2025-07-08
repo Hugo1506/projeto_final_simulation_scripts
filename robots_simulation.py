@@ -20,7 +20,7 @@ from PBest import PBest
 from GBest import GBest
 import rclpy
 from GBestSubscriber import retrieve_gbest_position
-
+from GBestSubscriber import retrieve_gbest_concentration
 app = FastAPI()
 
 
@@ -1197,8 +1197,8 @@ def pso(username: str, simulationNumber: str, height: float, robots):
     average_point = Vector3(average_pointX,average_pointY,height)
 
     rclpy.init()
+    global gbest
     gbest = GBest(average_point, 0.0)
-    gbest_position = retrieve_gbest_position()
     
 
 
@@ -1398,47 +1398,267 @@ def pso(username: str, simulationNumber: str, height: float, robots):
                 capture_frame_for_gif(heatmap)
 
                 if robot1Position is not None and not robot1StopFlag:
-                    print("ok")
+
                     if concentration1 > pbest1.get_concentration():
-                        pbest1.update_pbest(robot1Position,concentration1)
+                        pbest1.update_pbest(robot1Position, concentration1)
                     
-                    gbest_position = gbest.position
+                    if concentration1 > retrieve_gbest_concentration():
+                        gbest.update_gbest(robot1Position , concentration1)
+
+                    gbest_position = retrieve_gbest_position()
+                    pbest1_position = pbest1.get_position()
 
                     r1 = np.random.rand()
                     r2 = np.random.rand()
 
-                    pbest_diff = Vector3(
-                        pbest1.position.x - robot1Position.x,
-                        pbest1.position.y - robot1Position.y,
-                        0
+                    new1_v_x = (
+                        w * robot1Velocity.x
+                        + c1 * r1 * (pbest1_position.x - robot1Position.x)
+                        + c2 * r2 * (gbest_position.x - robot1Position.x)
                     )
-                    gbest_diff = Vector3(
-                        gbest_position.x - robot1Position.x,
-                        gbest_position.y - robot1Position.y,
-                        0
+                    new1_v_y = (
+                        w * robot1Velocity.y
+                        + c1 * r1 * (pbest1_position.y - robot1Position.y)
+                        + c2 * r2 * (gbest_position.y - robot1Position.y)
                     )
-                    # Update velocity
-                    robot1Velocity.x = (w * robot1Velocity.x +
-                                        c1 * r1 * pbest_diff.x +
-                                        c2 * r2 * gbest_diff.x)
-                    robot1Velocity.y = (w * robot1Velocity.y +
-                                        c1 * r1 * pbest_diff.y +
-                                        c2 * r2 * gbest_diff.y)
+                    new1_v_z = (
+                        w * robot1Velocity.z
+                        + c1 * r1 * (pbest1_position.z - robot1Position.z)
+                        + c2 * r2 * (gbest_position.z - robot1Position.z)
+                    )
 
-                    speed = np.sqrt(robot1Velocity.x**2 + robot1Velocity.y**2)
-                    if speed > robot1Speed:
-                        robot1Velocity.x = (robot1Velocity.x / speed) * robot1Speed
-                        robot1Velocity.y = (robot1Velocity.y / speed) * robot1Speed
+                    speed1 = np.sqrt(new1_v_x**2 + new1_v_y**2 + new1_v_z**2)
+                    if speed1 > robot1Speed:
+                        scale1 = robot1Speed / speed1
+                        new1_v_x *= scale1
+                        new1_v_y *= scale1
+                        new1_v_z *= scale1
 
+                    robot1Velocity.x = new1_v_x
+                    robot1Velocity.y = new1_v_y
+                    robot1Velocity.z = new1_v_z
+
+                    # Update position
                     robot1Position.x += robot1Velocity.x * updateInterval
                     robot1Position.y += robot1Velocity.y * updateInterval
+                    robot1Position.z += robot1Velocity.z * updateInterval
+
+                    print(f'Updated velocity: ({robot1Velocity.x}, {robot1Velocity.y}, {robot1Velocity.z})')
+                    print(f'Updated position: ({robot1Position.x}, {robot1Position.y}, {robot1Position.z})')
 
                     if iteration > robot1Iterations:
                         robot1StopFlag = True
+                    
+                if robot2Position is not None and not robot2StopFlag:
 
-                    if robot1StopFlag and robot2StopFlag and robot3StopFlag and robot4StopFlag:
-                        break
+                    if concentration2 > pbest2.get_concentration():
+                        pbest2.update_pbest(robot2Position, concentration2)
+                    
+                    if concentration2 > retrieve_gbest_concentration():
+                        gbest.update_gbest(robot2Position , concentration2)
 
+                    gbest_position = retrieve_gbest_position()
+                    pbest2_position = pbest2.get_position()
+
+                    r1 = np.random.rand()
+                    r2 = np.random.rand()
+
+                    new2_v_x = (
+                        w * robot2Velocity.x
+                        + c1 * r1 * (pbest2_position.x - robot2Position.x)
+                        + c2 * r2 * (gbest_position.x - robot2Position.x)
+                    )
+                    new2_v_y = (
+                        w * robot2Velocity.y
+                        + c1 * r1 * (pbest2_position.y - robot2Position.y)
+                        + c2 * r2 * (gbest_position.y - robot2Position.y)
+                    )
+                    new2_v_z = (
+                        w * robot2Velocity.z
+                        + c1 * r1 * (pbest2_position.z - robot2Position.z)
+                        + c2 * r2 * (gbest_position.z - robot2Position.z)
+                    )
+
+                    speed2 = np.sqrt(new2_v_x**2 + new2_v_y**2 + new2_v_z**2)
+                    if speed2 > robot2Speed:
+                        scale2 = robot2Speed / speed2
+                        new2_v_x *= scale2
+                        new2_v_y *= scale2
+                        new2_v_z *= scale2
+
+                    robot2Velocity.x = new2_v_x
+                    robot2Velocity.y = new2_v_y
+                    robot2Velocity.z = new2_v_z
+
+                    # Update position
+                    robot2Position.x += robot2Velocity.x * updateInterval
+                    robot2Position.y += robot2Velocity.y * updateInterval
+                    robot2Position.z += robot2Velocity.z * updateInterval
+
+                    print(f'Updated velocity: ({robot2Velocity.x}, {robot2Velocity.y}, {robot2Velocity.z})')
+                    print(f'Updated position: ({robot2Position.x}, {robot2Position.y}, {robot2Position.z})')
+
+                    if iteration > robot2Iterations:
+                        robot2StopFlag = True
+
+                if robot3Position is not None and not robot3StopFlag:
+
+                    if concentration3 > pbest3.get_concentration():
+                        pbest3.update_pbest(robot3Position, concentration3)
+                    
+                    if concentration3 > retrieve_gbest_concentration():
+                        gbest.update_gbest(robot3Position , concentration3)
+
+                    gbest_position = retrieve_gbest_position()
+                    pbest3_position = pbest3.get_position()
+
+                    r1 = np.random.rand()
+                    r2 = np.random.rand()
+
+                    new3_v_x = (
+                        w * robot3Velocity.x
+                        + c1 * r1 * (pbest3_position.x - robot3Position.x)
+                        + c2 * r2 * (gbest_position.x - robot3Position.x)
+                    )
+                    new3_v_y = (
+                        w * robot3Velocity.y
+                        + c1 * r1 * (pbest3_position.y - robot3Position.y)
+                        + c2 * r2 * (gbest_position.y - robot3Position.y)
+                    )
+                    new3_v_z = (
+                        w * robot3Velocity.z
+                        + c1 * r1 * (pbest3_position.z - robot3Position.z)
+                        + c2 * r2 * (gbest_position.z - robot3Position.z)
+                    )
+
+                    speed3 = np.sqrt(new3_v_x**2 + new3_v_y**2 + new3_v_z**2)
+                    if speed3 > robot3Speed:
+                        scale3 = robot3Speed / speed3
+                        new3_v_x *= scale3
+                        new3_v_y *= scale3
+                        new3_v_z *= scale3
+
+                    robot3Velocity.x = new3_v_x
+                    robot3Velocity.y = new3_v_y
+                    robot3Velocity.z = new3_v_z
+
+                    # Update position
+                    robot3Position.x += robot3Velocity.x * updateInterval
+                    robot3Position.y += robot3Velocity.y * updateInterval
+                    robot3Position.z += robot3Velocity.z * updateInterval
+
+                    print(f'Updated velocity: ({robot3Velocity.x}, {robot3Velocity.y}, {robot3Velocity.z})')
+                    print(f'Updated position: ({robot3Position.x}, {robot3Position.y}, {robot3Position.z})')
+
+                    if iteration > robot3Iterations:
+                        robot3StopFlag = True
+
+                if robot2Position is not None and not robot2StopFlag:
+
+                    if concentration2 > pbest2.get_concentration():
+                        pbest2.update_pbest(robot2Position, concentration2)
+                    
+                    if concentration2 > retrieve_gbest_concentration():
+                        gbest.update_gbest(robot2Position , concentration2)
+
+                    gbest_position = retrieve_gbest_position()
+                    pbest2_position = pbest2.get_position()
+
+                    r1 = np.random.rand()
+                    r2 = np.random.rand()
+
+                    new2_v_x = (
+                        w * robot2Velocity.x
+                        + c1 * r1 * (pbest2_position.x - robot2Position.x)
+                        + c2 * r2 * (gbest_position.x - robot2Position.x)
+                    )
+                    new2_v_y = (
+                        w * robot2Velocity.y
+                        + c1 * r1 * (pbest2_position.y - robot2Position.y)
+                        + c2 * r2 * (gbest_position.y - robot2Position.y)
+                    )
+                    new2_v_z = (
+                        w * robot2Velocity.z
+                        + c1 * r1 * (pbest2_position.z - robot2Position.z)
+                        + c2 * r2 * (gbest_position.z - robot2Position.z)
+                    )
+
+                    speed2 = np.sqrt(new2_v_x**2 + new2_v_y**2 + new2_v_z**2)
+                    if speed2 > robot2Speed:
+                        scale2 = robot2Speed / speed2
+                        new2_v_x *= scale2
+                        new2_v_y *= scale2
+                        new2_v_z *= scale2
+
+                    robot2Velocity.x = new2_v_x
+                    robot2Velocity.y = new2_v_y
+                    robot2Velocity.z = new2_v_z
+
+                    # Update position
+                    robot2Position.x += robot2Velocity.x * updateInterval
+                    robot2Position.y += robot2Velocity.y * updateInterval
+                    robot2Position.z += robot2Velocity.z * updateInterval
+
+                    print(f'Updated velocity: ({robot2Velocity.x}, {robot2Velocity.y}, {robot2Velocity.z})')
+                    print(f'Updated position: ({robot2Position.x}, {robot2Position.y}, {robot2Position.z})')
+
+                    if iteration > robot2Iterations:
+                        robot2StopFlag = True
+
+                if robot4Position is not None and not robot4StopFlag:
+
+                    if concentration4 > pbest4.get_concentration():
+                        pbest4.update_pbest(robot4Position, concentration4)
+                    
+                    if concentration4 > retrieve_gbest_concentration():
+                        gbest.update_gbest(robot4Position , concentration4)
+
+                    gbest_position = retrieve_gbest_position()
+                    pbest4_position = pbest4.get_position()
+
+                    r1 = np.random.rand()
+                    r2 = np.random.rand()
+
+                    new4_v_x = (
+                        w * robot4Velocity.x
+                        + c1 * r1 * (pbest4_position.x - robot4Position.x)
+                        + c2 * r2 * (gbest_position.x - robot4Position.x)
+                    )
+                    new4_v_y = (
+                        w * robot4Velocity.y
+                        + c1 * r1 * (pbest4_position.y - robot4Position.y)
+                        + c2 * r2 * (gbest_position.y - robot4Position.y)
+                    )
+                    new4_v_z = (
+                        w * robot4Velocity.z
+                        + c1 * r1 * (pbest4_position.z - robot4Position.z)
+                        + c2 * r2 * (gbest_position.z - robot4Position.z)
+                    )
+
+                    speed4 = np.sqrt(new4_v_x**2 + new4_v_y**2 + new4_v_z**2)
+                    if speed4 > robot4Speed:
+                        scale4 = robot4Speed / speed4
+                        new4_v_x *= scale4
+                        new4_v_y *= scale4
+                        new4_v_z *= scale4
+
+                    robot4Velocity.x = new4_v_x
+                    robot4Velocity.y = new4_v_y
+                    robot4Velocity.z = new4_v_z
+
+                    # Update position
+                    robot4Position.x += robot4Velocity.x * updateInterval
+                    robot4Position.y += robot4Velocity.y * updateInterval
+                    robot4Position.z += robot4Velocity.z * updateInterval
+
+                    print(f'Updated velocity: ({robot4Velocity.x}, {robot4Velocity.y}, {robot4Velocity.z})')
+                    print(f'Updated position: ({robot4Position.x}, {robot4Position.y}, {robot4Position.z})')
+
+                    if iteration > robot4Iterations:
+                        robot4StopFlag = True
+
+                if robot1StopFlag and robot2StopFlag and robot3StopFlag and robot4StopFlag:
+                    break
         
     main()
     simulation_data_serializable = []

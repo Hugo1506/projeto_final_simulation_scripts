@@ -24,12 +24,11 @@ class GBest(Node):
         self.publish_concentration()
     
     def update_gbest(self, new_position: Vector3, new_concentration: float):
-        if self.concentration < new_concentration:
-            self.position = new_position
-            self.concentration = new_concentration
-            # Publish the updated position and concentration to the ROS topics
-            self.publish_position()
-            self.publish_concentration()
+        self.position = new_position
+        self.concentration = new_concentration
+        # Publish the updated position and concentration to the ROS topics
+        self.publish_position()
+        self.publish_concentration()
 
     def publish_position(self):
         position_msg = Point(x=self.position.x, y=self.position.y, z=self.position.z)
