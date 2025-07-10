@@ -1095,7 +1095,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
     return JSONResponse(content={"frames": simulation_data_serializable, "robotSim_id": robotSim_id + 1}) 
 
 @app.get("/pso_simmulation")
-def pso(username: str, simulationNumber: str, height: float, robots):
+def pso(username: str, simulationNumber: str, height: float,startingIteration: int, robots):
     if isinstance(robots, str):
         robots = json.loads(robots)
 
@@ -1199,16 +1199,15 @@ def pso(username: str, simulationNumber: str, height: float, robots):
     average_pointY = calculate_average_position(robot1Yposition, robot2Yposition, robot3Yposition, robot4Yposition)
     
     average_point = Vector3(average_pointX,average_pointY,height)
-
+    
     rclpy.init()
     global gbest
     gbest = GBest(average_point, 0.0)
+    rclpy.spin_once(gbest, timeout_sec=0.1)
     
 
 
-    def capture_frame_for_gif(image):
-        iteration = sim.getCurrentIteration()
-        
+    def capture_frame_for_gif(image,iteration):        
         rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(rgb_image)
 
@@ -1302,6 +1301,7 @@ def pso(username: str, simulationNumber: str, height: float, robots):
                     cv2.putText(image, "R4", (i - 30, j), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
     def main():
+        robotSimulationIteration = 0
         updateInterval = 0.5 # segundos
         sim.playSimulation(0, updateInterval)
 
@@ -1340,10 +1340,10 @@ def pso(username: str, simulationNumber: str, height: float, robots):
         global frames
         frames = []
 
-        while sim.getCurrentIteration() != 0:
+        while sim.getCurrentIteration() != startingIteration:
             time.sleep(0.01)
         
-        last_iteration = -1
+        last_iteration =  startingIteration -1
         
         w = 0.7      
         c1 = 1.5   
@@ -1372,16 +1372,16 @@ def pso(username: str, simulationNumber: str, height: float, robots):
 
                 concentration2 = concentration3 = concentration4 = 0 
 
-                capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), iteration, 1)
+                capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), robotSimulationIteration, 1)
                 if robot2Position is not None:
                     concentration2 = sim.getCurrentConcentration(robot2Position)
-                    capture_simulation_data(robot2Position, concentration2, sim.getCurrentWind(robot2Position), iteration, 2)
+                    capture_simulation_data(robot2Position, concentration2, sim.getCurrentWind(robot2Position), robotSimulationIteration, 2)
                     if robot3Position is not None:
                         concentration3 = sim.getCurrentConcentration(robot3Position)
-                        capture_simulation_data(robot3Position,concentration3, sim.getCurrentWind(robot3Position), iteration, 3)
+                        capture_simulation_data(robot3Position,concentration3, sim.getCurrentWind(robot3Position), robotSimulationIteration, 3)
                         if robot4Position is not None:
                             concentration4 = sim.getCurrentConcentration(robot4Position)
-                            capture_simulation_data(robot4Position, concentration4, sim.getCurrentWind(robot4Position), iteration, 4)
+                            capture_simulation_data(robot4Position, concentration4, sim.getCurrentWind(robot4Position), robotSimulationIteration, 4)
             
 
 
@@ -1399,7 +1399,8 @@ def pso(username: str, simulationNumber: str, height: float, robots):
                                         initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
                                         heatmap)
 
-                capture_frame_for_gif(heatmap)
+                capture_frame_for_gif(heatmap,robotSimulationIteration)
+                robotSimulationIteration = robotSimulationIteration +1
 
                 if robot1Position is not None and not robot1StopFlag:
 
