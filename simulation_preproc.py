@@ -1,3 +1,4 @@
+import inotify.calls
 import requests
 import os
 import subprocess
@@ -6,6 +7,7 @@ import re
 import shutil
 import signal
 import atexit
+import sys
 
 # vai monitorar todos os eventos que ocorren no directoria /simulation_data e às suas subdiretorias
 i = inotify.adapters.InotifyTree('/simulation_data/')
@@ -71,14 +73,16 @@ def extract_min_max(log_file_path):
 def run_and_log(command, log_file):
     with open(log_file, 'w') as log_file:
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    
+        if process.stdout != None:
+            for line in process.stdout:
+                print(line, end='')  
+                log_file.write(line)  
 
-        for line in process.stdout:
-            print(line, end='')  
-            log_file.write(line)  
-
-        for line in process.stderr:
-            print(line, end='', file=sys.stderr)  
-            log_file.write(line) 
+        if process.stderr != None:
+            for line in process.stderr:
+                print(line, end='', file=sys.stderr)  
+                log_file.write(line) 
 
         process.wait()
         log_file.write(f"Return code: {process.returncode}\n")
@@ -111,7 +115,6 @@ while True:
             # se alguma diretoria ou ficheiro for criado então executa o código
             if 'IN_CREATE' in event_mask or 'IN_MODIFY' in event_mask:
                 
-                print("preprocessing simulation")
                 # GET request para obter os dados da próxima simulação 
                 response = requests.get('http://webserver:3000/getFirstInQueue')
                 if response.status_code == 200:
@@ -131,7 +134,14 @@ while True:
                     preprocessing_command = ['ros2', 'launch', 'test_env', 'gaden_preproc_launch.py', f'scenario:={user+"_"+simulation_dir}']
                     run_and_log(preprocessing_command, log_file_path)
                     
-                    x_min, x_max, y_min, y_max, z_min, z_max = extract_min_max(log_file_path)
+                    result_min_max = extract_min_max(log_file_path)
+
+                    if result_min_max:
+                        x_min, x_max, y_min, y_max, z_min, z_max = result_min_max
+                        print(f"x_min: {x_min}, x_max: {x_max}, y_min: {y_min}, y_max: {y_max}, z_min: {z_min}, z_max: {z_max}")
+                    else:
+                        print("Failed to extract min/max coordinates.")
+
                     setBounds = requests.post('http://webserver:3000/setBounds', json={
                             'simulation': data.get('simulation'),
                             'x_min': x_min,

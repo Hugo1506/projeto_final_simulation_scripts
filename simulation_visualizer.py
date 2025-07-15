@@ -35,7 +35,7 @@ max_ppm = 7.0
 imageSizeFactor = 5          
 contour_threshold = 40      
 timePerIteration = 1
-numberOfIterations = 100
+numberOfIterations = 50
 
 
 
@@ -208,4 +208,4 @@ def save_contour_map(height: float):
 for height in numpy.arange(minHeight, maxHeight, 0.5):
   save_heatmaps(height)
   save_wind_vector_field(height)
-  save_contour_map(height)
+  #save_contour_map(height)
