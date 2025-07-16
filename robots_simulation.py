@@ -36,30 +36,28 @@ def example_simulation(username: str, simulationNumber: str, zMin: float, zMax: 
             gaden_params_file = os.path.join(scenario_path, 'params', 'gaden_params.yaml')
             
 
-            for height in np.arange(zMin, zMax, 0.5):
-                print(height + 0.1)
-                print(zMin)
-                print(zMax)
-                # Update YAML with new plume location
-                with open(gaden_params_file, 'r') as file:
-                    gaden_params = yaml.safe_load(file)
+           
 
-                gaden_params['gaden_filament_simulator']['ros__parameters']['source_position_x'] = 1.0
-                gaden_params['gaden_filament_simulator']['ros__parameters']['source_position_y'] = 1.0
-                gaden_params['gaden_filament_simulator']['ros__parameters']['source_position_z'] = 1.0
+            # Update YAML with new plume location
+            with open(gaden_params_file, 'r') as file:
+                gaden_params = yaml.safe_load(file)
 
-                with open(gaden_params_file, 'w') as file:
-                    yaml.dump(gaden_params, file, width=1000)
+            gaden_params['gaden_filament_simulator']['ros__parameters']['source_position_x'] = 1.0
+            gaden_params['gaden_filament_simulator']['ros__parameters']['source_position_y'] = 1.0
+            gaden_params['gaden_filament_simulator']['ros__parameters']['source_position_z'] = 1.0
 
-                # Run the simulation first and wait for it to complete
-                subprocess.run(
-                        ['ros2', 'launch', 'test_env', 'gaden_sim_no_gui_launch.py', f'scenario:={simulation_dir}'],
-                        stdout=sys.stdout,
-                        stderr=sys.stderr,
-                        text=True,
-                        timeout=120 
-                )
+            with open(gaden_params_file, 'w') as file:
+                yaml.dump(gaden_params, file, width=1000)
 
+            # Run the simulation first and wait for it to complete
+            subprocess.run(
+                    ['ros2', 'launch', 'test_env', 'gaden_sim_no_gui_launch.py', f'scenario:={simulation_dir}'],
+                    stdout=sys.stdout,
+                    stderr=sys.stderr,
+                    text=True,
+                    timeout=120 
+            )
+            for height in np.arange(zMin, zMax, 0.5):   
 
                 simulation_path = os.path.join(scenario_path, "gas_simulations/sim1")
                 ocuppancy_path = os.path.join(scenario_path, "OccupancyGrid3D.csv")
@@ -69,7 +67,7 @@ def example_simulation(username: str, simulationNumber: str, zMin: float, zMax: 
 
                 sim = Simulation(simulation_path, ocuppancy_path)
                 map = sim.generateWindMap2D(sim.getCurrentIteration(), 0.0, True)
-
+                sim.playSimulation(10, 0.5)
                 # Create base image
                 base_image = np.full(map.shape, 255, np.uint8)
                 block(map, base_image)
@@ -104,16 +102,20 @@ def example_simulation(username: str, simulationNumber: str, zMin: float, zMax: 
                     'type': 'plume_wind',
                     'gif': img_str,
                     'height': height,
-                    'iteration': sim.getCurrentIteration(),
+                    'iteration': 0,
                     'robotSim_id': -1  
                 })
 
+                sim.stopPlaying()
                 if response.status_code != 200:
                     print(f"Failed to upload: {response.status_code}, {response.text}")
                 else: 
                     print(f"right: {response.status_code}, {response.text}")
 
-            return JSONResponse(content={"message": "Plume location set successfully."})
+            requests.post('http://webserver:3000/setStatusToInSimulation', json={
+                'simulation': simulation
+            })
+            return JSONResponse(content={"message": "enviroment simulation."})
         except Exception as e:
             print("Error:", e)
             import traceback

@@ -152,10 +152,6 @@ while True:
                             'z_max': z_max,
                     }) 
                     
-                    # faz um POST request para atualizar o status da simulação para indicar que já está em simulação
-                    updateStatusToInSimulation = requests.post('http://webserver:3000/setStatusToInSimulation', json={
-                        'simulation': data.get('simulation'),
-                    })
             else:
                 continue
                
