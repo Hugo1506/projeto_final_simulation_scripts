@@ -61,34 +61,22 @@ def example_simulation(username: str, simulationNumber: str, zMin: float, zMax: 
 
                 simulation_path = os.path.join(scenario_path, "gas_simulations/sim1")
                 ocuppancy_path = os.path.join(scenario_path, "OccupancyGrid3D.csv")
-                arrowLength = 10
-                spaceBetweenArrows = 5
+
                 imageSizeFactor = 5
 
                 sim = Simulation(simulation_path, ocuppancy_path)
-                map = sim.generateWindMap2D(sim.getCurrentIteration(), 0.0, True)
-                sim.playSimulation(10, 0.5)
-                # Create base image
-                base_image = np.full(map.shape, 255, np.uint8)
-                block(map, base_image)
+                map = sim.generateConcentrationMap2D(sim.getCurrentIteration(), height, True)
+                map_scaled = map * (255.0 / 1000000)
+                formatted_map = np.array(np.clip(map_scaled, 0, 255), dtype=np.uint8)
 
-                # Resize and convert image
-                newshape = (imageSizeFactor * map.shape[1], imageSizeFactor * map.shape[0])
-                base_image = cv2.resize(base_image, newshape)
-                base_image = cv2.cvtColor(base_image, cv2.COLOR_GRAY2BGR)
+                heatmap = cv2.applyColorMap(formatted_map, cv2.COLORMAP_JET)
 
-                # Draw arrows
-                for i in range(0, map.shape[0], spaceBetweenArrows):
-                    for j in range(0, map.shape[1], spaceBetweenArrows):
-                        if isinstance(map[i, j], Vector3):
-                            offsetX = int(map[i, j].x * arrowLength)
-                            offsetY = int(map[i, j].y * arrowLength)
-                            start_point = (imageSizeFactor * j, imageSizeFactor * i)
-                            end_point = (start_point[0] + offsetY, start_point[1] + offsetX)
-                            cv2.arrowedLine(base_image, start_point, end_point, (0, 0, 255), 2)
+                block(map, heatmap)
 
-                # Convert and compress image
-                rgb_image = cv2.cvtColor(base_image, cv2.COLOR_BGR2RGB)
+                newshape = (imageSizeFactor * heatmap.shape[1], imageSizeFactor * heatmap.shape[0])
+                heatmap = cv2.resize(heatmap, newshape)
+
+                rgb_image = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
                 pil_img = Image.fromarray(rgb_image)
 
                 buffered = io.BytesIO()
