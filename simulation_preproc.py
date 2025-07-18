@@ -9,23 +9,23 @@ import signal
 import atexit
 import sys
 
-# vai monitorar todos os eventos que ocorren no directoria /simulation_data e às suas subdiretorias
-i = inotify.adapters.InotifyTree('/simulation_data/')
-
 gaden_launch_path = '/src/gaden/test_env/launch'
 ros_work_dir = '/src'
 
-log_file_path = '/projeto_final_simulation_scripts/simulation.log'
+
 
 x_min, x_max = None, None
 y_min, y_max = None, None
 z_min, z_max = None, None
 
 # inicia o servidor FastAPI 
+'''
 fastapi_process = subprocess.Popen(
     ['fastapi', 'run', 'robots_simulation.py'],
     preexec_fn=os.setsid 
 )
+
+
 
 # funcção para parar o servidor FastAPI quando o script termina
 def cleanup():
@@ -37,7 +37,7 @@ def cleanup():
 
 # quando o script termina, a função cleanup é chamada para parar o servidor FastAPI
 atexit.register(cleanup)
-
+'''
 
 # verifica se a localização da pluma está dentro do espaço de simulação
 def extract_min_max(log_file_path):
@@ -99,65 +99,5 @@ if (not os.path.exists(os.path.join(gaden_launch_path,'gaden_sim_no_gui_launch.p
 
     subprocess.run(['colcon', 'build', '--symlink-install'], cwd=ros_work_dir)   
 
-
-
-
-
-while True:
-    try:
-        # se o evento for NONE (não existir) continua a execução do loop
         
-        for event in i.event_gen():
-            if event is None:
-                continue
-            # extrai a mask do evento
-            event_mask = event[1]             
-            # se alguma diretoria ou ficheiro for criado então executa o código
-            if 'IN_CREATE' in event_mask or 'IN_MODIFY' in event_mask:
-                
-                # GET request para obter os dados da próxima simulação 
-                response = requests.get('http://webserver:3000/getFirstInQueue')
-                if response.status_code == 200:
-                    data = response.json()
-
-                    # extrai o user da resposta
-                    user = (data.get('simulation')).split('_')[0]
-                    # cria a diretoria com base na resposta 
-                    simulation_dir = "sim_" +(data.get('simulation')).split('_')[1]
-
-                    # cria a diretoria onde os dados da simulação vão ser guardados
-                    simulation_path = os.path.join('/simulation_data',user,simulation_dir)
-                    # corre o script que vai tratar e mover os dados da simulação para a diretoria onde ocorre a simulação
-                    subprocess.run(['python3', "sanitize_and_move_simulations.py", simulation_path]) 
-
-                    # corre o script do gaden para fazer o pre-processamento dos dados da simulação
-                    preprocessing_command = ['ros2', 'launch', 'test_env', 'gaden_preproc_launch.py', f'scenario:={user+"_"+simulation_dir}']
-                    run_and_log(preprocessing_command, log_file_path)
                     
-                    result_min_max = extract_min_max(log_file_path)
-
-                    if result_min_max:
-                        x_min, x_max, y_min, y_max, z_min, z_max = result_min_max
-                        print(f"x_min: {x_min}, x_max: {x_max}, y_min: {y_min}, y_max: {y_max}, z_min: {z_min}, z_max: {z_max}")
-                    else:
-                        print("Failed to extract min/max coordinates.")
-
-                    setBounds = requests.post('http://webserver:3000/setBounds', json={
-                            'simulation': data.get('simulation'),
-                            'x_min': x_min,
-                            'x_max': x_max,
-                            'y_min': y_min,
-                            'y_max': y_max,
-                            'z_min': z_min,
-                            'z_max': z_max,
-                    }) 
-                    
-            else:
-                continue
-               
-    except inotify.calls.InotifyError as e:
-        print(f"[WARNING] Ignored inotify error: {e}")
-        continue
-    except Exception as e:
-        print(f"[ERROR] Unexpected error in inotify loop: {e}")
-        continue

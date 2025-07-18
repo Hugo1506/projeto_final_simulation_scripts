@@ -19,11 +19,117 @@ import sys
 from PBest import PBest
 from GBest import GBest
 import rclpy
+import re
 from GBestSubscriber import retrieve_gbest_position
 from GBestSubscriber import retrieve_gbest_concentration
+
+gaden_launch_path = '/src/gaden/test_env/launch'
+ros_work_dir = '/src'
+
+
+
+x_min, x_max = None, None
+y_min, y_max = None, None
+z_min, z_max = None, None
 app = FastAPI()
+log_file_path = '/projeto_final_simulation_scripts/simulation.log'
+
+# verifica se a localização da pluma está dentro do espaço de simulação
+def extract_min_max(log_file_path):
+    with open(log_file_path, 'r', encoding='utf-8') as file:
+        log_content = file.read()
+
+    x_pattern = re.compile(r'x\s*:\s*\(([-\d.]+),\s*([-\d.]+)\)')
+    y_pattern = re.compile(r'y\s*:\s*\(([-\d.]+),\s*([-\d.]+)\)')
+    z_pattern = re.compile(r'z\s*:\s*\(([-\d.]+),\s*([-\d.]+)\)')
+
+    x_matches = x_pattern.findall(log_content)
+    y_matches = y_pattern.findall(log_content)
+    z_matches = z_pattern.findall(log_content)
+
+    def get_match(matches):
+        if len(matches) >= 2:
+            return float(matches[1][0]), float(matches[1][1])
+        elif len(matches) == 1:
+            return float(matches[0][0]), float(matches[0][1])
+        else:
+            raise ValueError("Coordinate not found in log file.")
+
+    try:
+        x_min, x_max = get_match(x_matches)
+        y_min, y_max = get_match(y_matches)
+        z_min, z_max = get_match(z_matches)
+        return x_min, x_max, y_min, y_max, z_min, z_max
+    except ValueError as e:
+        print(f"Error: {e}")
+        return None
+
+# corre um comando e guarda o output num ficheiro de log
+def run_and_log(command, log_file):
+    with open(log_file, 'w') as log_file:
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    
+        if process.stdout != None:
+            for line in process.stdout:
+                print(line, end='')  
+                log_file.write(line)  
+
+        if process.stderr != None:
+            for line in process.stderr:
+                print(line, end='', file=sys.stderr)  
+                log_file.write(line) 
+
+        process.wait()
+        log_file.write(f"Return code: {process.returncode}\n")
 
 
+
+# verifica se o ficheiro gaden_sim_no_gui_launch.py existe, se não existir copia o ficheiro para a pasta de launch do gaden e compila os pacotes
+if (not os.path.exists(os.path.join(gaden_launch_path,'gaden_sim_no_gui_launch.py')) ):
+    with open('/projeto_final_simulation_scripts/gaden_sim_no_gui_launch.py', 'r') as file:
+        gaden_sim_no_gui_launch_py_content = file.read()
+    
+    with open(os.path.join(gaden_launch_path, 'gaden_sim_no_gui_launch.py'), 'w') as file:
+        file.write(gaden_sim_no_gui_launch_py_content)
+
+    subprocess.run(['colcon', 'build', '--symlink-install'], cwd=ros_work_dir)   
+
+@app.get("/start_preprocessing")
+def start_preprocessing(simulation: str):
+        print(simulation)
+        # extrai o user da resposta
+        user = simulation.split('_')[0]
+        # cria a diretoria com base na resposta 
+        simulation_dir = "sim_" +simulation.split('_')[1]
+
+        # cria a diretoria onde os dados da simulação vão ser guardados
+        simulation_path = os.path.join('/simulation_data',user,simulation_dir)
+        # corre o script que vai tratar e mover os dados da simulação para a diretoria onde ocorre a simulação
+        subprocess.run(['python3', "sanitize_and_move_simulations.py", simulation_path]) 
+
+        # corre o script do gaden para fazer o pre-processamento dos dados da simulação
+        preprocessing_command = ['ros2', 'launch', 'test_env', 'gaden_preproc_launch.py', f'scenario:={user+"_"+simulation_dir}']
+        run_and_log(preprocessing_command, log_file_path)
+        
+        result_min_max = extract_min_max(log_file_path)
+
+        if result_min_max:
+            x_min, x_max, y_min, y_max, z_min, z_max = result_min_max
+            print(f"x_min: {x_min}, x_max: {x_max}, y_min: {y_min}, y_max: {y_max}, z_min: {z_min}, z_max: {z_max}")
+            res = requests.post('http://webserver:3000/setBounds', json={
+                'simulation': simulation,
+                'x_min': x_min,
+                'x_max': x_max,
+                'y_min': y_min,
+                'y_max': y_max,
+                'z_min': z_min,
+                'z_max': z_max,
+        }) 
+            print(res)
+            return {"status": "success", "message": "Preprocessing and bounds set successfully."}
+        else:
+            print("Failed to extract min/max coordinates.")
+            return {"status": "error", "message": "Failed to extract min/max coordinates."}
 
 @app.get("/example_simulation")
 def example_simulation(username: str, simulationNumber: str, zMin: float, zMax: float):
