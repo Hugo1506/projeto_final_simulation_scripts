@@ -5,7 +5,6 @@ from gadentools.Utils import block
 import numpy
 import cv2
 from PIL import Image
-import imageio
 import time
 import os
 from IPython.display import clear_output
@@ -121,7 +120,7 @@ def save_wind_vector_field(height):
                     offsetX = int(map[i, j].x * arrowLength)
                     offsetY = int(map[i, j].y * arrowLength)
                     start_point = (imageSizeFactor * j, imageSizeFactor * i)
-                    end_point = (start_point[0] + offsetY, start_point[1] + offsetX)
+                    end_point = (start_point[0] + offsetX, start_point[1] + offsetY)
                     cv2.arrowedLine(base_image, start_point, end_point, (0, 0, 255), 2)
 
         rgb_image = cv2.cvtColor(base_image, cv2.COLOR_BGR2RGB)

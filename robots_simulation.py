@@ -193,7 +193,7 @@ def example_simulation(username: str, simulationNumber: str, zMin: float, zMax: 
                 # Upload results
                 response = requests.post('http://webserver:3000/uploadSimulationResults', json={
                     'simulation': simulation,
-                    'type': 'plume_wind',
+                    'type': 'plume',
                     'gif': img_str,
                     'height': height,
                     'iteration': 0,
@@ -205,10 +205,8 @@ def example_simulation(username: str, simulationNumber: str, zMin: float, zMax: 
                     print(f"Failed to upload: {response.status_code}, {response.text}")
                 else: 
                     print(f"right: {response.status_code}, {response.text}")
+                
 
-            requests.post('http://webserver:3000/setStatusToInSimulation', json={
-                'simulation': simulation
-            })
             return JSONResponse(content={"message": "enviroment simulation."})
         except Exception as e:
             print("Error:", e)
