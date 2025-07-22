@@ -140,9 +140,7 @@ def example_simulation(username: str, simulationNumber: str, zMin: float, zMax: 
             simulation = username + "_" + simulationNumber
             scenario_path = os.path.join("/src/install/test_env/share/test_env/scenarios", simulation_dir)
             gaden_params_file = os.path.join(scenario_path, 'params', 'gaden_params.yaml')
-            
 
-           
 
             # Update YAML with new plume location
             with open(gaden_params_file, 'r') as file:
@@ -215,7 +213,8 @@ def example_simulation(username: str, simulationNumber: str, zMin: float, zMax: 
             return {"error": str(e)}
 
 @app.get("/set_plume_location")
-def set_plume_location(username: str, simulationNumber: str, plumeXlocation: float, plumeYlocation: float, plumeZlocation: float):
+def set_plume_location(username: str, simulationNumber: str, plumeXlocation: float, plumeYlocation: float, plumeZlocation: float, temperatureInK: float, ppmCenter: float, numFilamentsSec: int, filamentInitialStd: float, filamentGrowth: float, filamentNoise: float):
+
     simulation_dir = username + "_sim_" + simulationNumber
     simulation = username + "_" + simulationNumber
     scenario_path = os.path.join("/src/install/test_env/share/test_env/scenarios",simulation_dir)
@@ -225,15 +224,22 @@ def set_plume_location(username: str, simulationNumber: str, plumeXlocation: flo
     with open(gaden_params_file, 'r') as file:
         gaden_params = yaml.safe_load(file)
 
-    # faz update com os novos valores de localização do pluma
+    # updates the plume simulation params
     gaden_params['gaden_filament_simulator']['ros__parameters']['source_position_x'] = plumeXlocation
     gaden_params['gaden_filament_simulator']['ros__parameters']['source_position_y'] = plumeYlocation
     gaden_params['gaden_filament_simulator']['ros__parameters']['source_position_z'] = plumeZlocation
+    gaden_params['gaden_filament_simulator']['ros__parameters']['temperature'] = temperatureInK
+    gaden_params['gaden_filament_simulator']['ros__parameters']['ppm_filament_center'] = ppmCenter
+    gaden_params['gaden_filament_simulator']['ros__parameters']['num_filaments_sec'] = numFilamentsSec
+    gaden_params['gaden_filament_simulator']['ros__parameters']['filament_initial_std'] = filamentInitialStd
+    gaden_params['gaden_filament_simulator']['ros__parameters']['filament_growth_gamma'] = filamentGrowth
+    gaden_params['gaden_filament_simulator']['ros__parameters']['filament_noise_std'] = filamentNoise
+
 
     with open(gaden_params_file, 'w') as file:
         yaml.dump(gaden_params, file, width=1000)
 
-    # corre o script modificado de simulação do gaden para fazer a simulação mas sem GUI
+    # runs the script to start the simulation
     subprocess.run(
             ['ros2', 'launch', 'test_env', 'gaden_sim_no_gui_launch.py', f'scenario:={simulation_dir}'],
             stdout=sys.stdout,
@@ -244,7 +250,7 @@ def set_plume_location(username: str, simulationNumber: str, plumeXlocation: flo
 
     subprocess.run(['python3', "simulation_visualizer.py", f'{simulation_dir}'])
 
-    # faz um POST request para atualizar o status da simulação para indicar que já está concluída
+    # post to set the simulation to DONE
     updateStatusToDone = requests.post('http://webserver:3000/setStatusToDone', json={
         'simulation': simulation,
     })
