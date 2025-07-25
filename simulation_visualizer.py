@@ -26,7 +26,7 @@ sim_wind = Simulation(simulation_path, \
                  ocuppancy_path)
 sim_contour = Simulation(simulation_path, \
                  ocuppancy_path)
-arrowLength = 10
+arrowLength = 20
 spaceBetweenArrows = 5
 maxHeight = sim_heatmap.env_max.z
 minHeight = sim_heatmap.env_min.z              
@@ -36,6 +36,22 @@ contour_threshold = 40
 timePerIteration = 1
 numberOfIterations = 50
 
+def mark_source(sim, image):
+    j = int((sim.source_position.x - sim.env_min.x) / (sim.env_max.x - sim.env_min.x) * image.shape[0])
+    i = int((sim.source_position.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
+
+    image = cv2.circle(image, (i, j), 4, (255, 255, 255), -1)
+
+    wind = sim.getCurrentWind(sim.source_position)
+    arrowLength = 20
+
+    end_j = int(j + wind.x * arrowLength)
+    end_i = int(i + wind.y * arrowLength)
+
+    if (end_i, end_j) != (i, j):
+        image = cv2.arrowedLine(image, (i, j), (end_i, end_j), (0, 255, 0), 2, tipLength=0.3)
+
+    return image
 
 
 def save_heatmaps(height):
@@ -49,6 +65,7 @@ def save_heatmaps(height):
         current_iteration = sim_heatmap.getCurrentIteration()
         while sim_heatmap.getCurrentIteration() <= current_iteration:
             time.sleep(0.01)
+
         
         map = sim_heatmap.generateConcentrationMap2D(sim_heatmap.getCurrentIteration(), height, True)
         map_scaled = map * (255.0 / max_ppm)
@@ -62,7 +79,8 @@ def save_heatmaps(height):
         heatmap = cv2.resize(heatmap, newshape)
 
         rgb_image = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
-        pil_img = Image.fromarray(rgb_image)
+        image_src = mark_source(sim_heatmap,rgb_image)
+        pil_img = Image.fromarray(image_src)
 
         buffered = io.BytesIO()
         pil_img.save(buffered, format="PNG") 
