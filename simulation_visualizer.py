@@ -13,6 +13,7 @@ import requests
 import base64
 import io
 import zlib
+import gc
 
 scenario_path = os.path.join("/src/install/test_env/share/test_env/scenarios",sys.argv[1])
 simulation_path = os.path.join(scenario_path,"gas_simulations/sim1")
@@ -20,21 +21,18 @@ ocuppancy_path = os.path.join(scenario_path,"OccupancyGrid3D.csv")
 
 simulation_name = sys.argv[1].replace("_sim_", "_")
 
-sim_heatmap = Simulation(simulation_path, \
+sim = Simulation(simulation_path, \
                  ocuppancy_path)
-sim_wind = Simulation(simulation_path, \
-                 ocuppancy_path)
-sim_contour = Simulation(simulation_path, \
-                 ocuppancy_path)
-arrowLength = 20
+
+arrowLength = 200
 spaceBetweenArrows = 5
-maxHeight = sim_heatmap.env_max.z
-minHeight = sim_heatmap.env_min.z              
+maxHeight = sim.env_max.z
+minHeight = sim.env_min.z              
 max_ppm = 7.0                 
 imageSizeFactor = 5          
 contour_threshold = 40      
 timePerIteration = 1
-numberOfIterations = 50
+numberOfIterations = 100
 
 def mark_source(sim, image):
     j = int((sim.source_position.x - sim.env_min.x) / (sim.env_max.x - sim.env_min.x) * image.shape[0])
@@ -43,31 +41,21 @@ def mark_source(sim, image):
     image = cv2.circle(image, (i, j), 4, (255, 255, 255), -1)
 
     wind = sim.getCurrentWind(sim.source_position)
-    arrowLength = 20
 
     end_j = int(j + wind.x * arrowLength)
     end_i = int(i + wind.y * arrowLength)
 
     if (end_i, end_j) != (i, j):
-        image = cv2.arrowedLine(image, (i, j), (end_i, end_j), (0, 255, 0), 2, tipLength=0.3)
+        image = cv2.arrowedLine(image,(i, j), (end_i, end_j), (0, 255, 0), 2, tipLength=0.3)
 
     return image
 
 
 def save_heatmaps(height):
-    sim_heatmap.playSimulation(0, timePerIteration)
-    last_iteration = -1
-    while sim_heatmap.getCurrentIteration() != 0:
-        time.sleep(0.01)
-    while sim_heatmap.getCurrentIteration() < numberOfIterations:
-        clear_output(wait=True)
-
-        current_iteration = sim_heatmap.getCurrentIteration()
-        while sim_heatmap.getCurrentIteration() <= current_iteration:
-            time.sleep(0.01)
-
-        
-        map = sim_heatmap.generateConcentrationMap2D(sim_heatmap.getCurrentIteration(), height, True)
+   
+    for current_iteration in range(0,numberOfIterations):
+        gc.collect()
+        map = sim.generateConcentrationMap2D(current_iteration, height, True)
         map_scaled = map * (255.0 / max_ppm)
         formatted_map = numpy.array(numpy.clip(map_scaled, 0, 255), dtype=numpy.uint8)
 
@@ -79,7 +67,7 @@ def save_heatmaps(height):
         heatmap = cv2.resize(heatmap, newshape)
 
         rgb_image = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
-        image_src = mark_source(sim_heatmap,rgb_image)
+        image_src = mark_source(sim,rgb_image)
         pil_img = Image.fromarray(image_src)
 
         buffered = io.BytesIO()
@@ -87,42 +75,32 @@ def save_heatmaps(height):
         compressed = zlib.compress(buffered.getvalue())
         img_str = base64.b64encode(compressed).decode('utf-8')
 
+
+
+        print(f"{current_iteration}: Captured heatmap at {height}")
         
-        if sim_heatmap.getCurrentIteration() > last_iteration:
-            last_iteration = last_iteration + 1
+        response = requests.post('http://webserver:3000/uploadSimulationResults', json={
+            'simulation': simulation_name,
+            'type': 'heatmap',
+            'gif': img_str,
+            'height': height,
+            'iteration': current_iteration
+        })
+        del map, formatted_map, heatmap, rgb_image, pil_img, buffered, compressed
+        gc.collect()
 
-            print(f"{sim_heatmap.getCurrentIteration()}: Captured heatmap at {height}")
-            response = requests.post('http://webserver:3000/uploadSimulationResults', json={
-                'simulation': simulation_name,
-                'type': 'heatmap',
-                'gif': img_str,
-                'height': height,
-                'iteration': current_iteration
-            })
-
-            if response.status_code != 200:
-                print(f"Failed to upload: {response.status_code}, {response.text}")
-
+        if response.status_code != 200:
+            print(f"Failed to upload: {response.status_code}, {response.text}")
 
     print("iteration limit reached, stopping simulation")
-    sim_heatmap.stopPlaying()
+
 
 
     
 def save_wind_vector_field(height):
-    sim_wind.playSimulation(0, timePerIteration)
-    last_iteration = -1
 
-    while sim_wind.getCurrentIteration() != 0:
-        time.sleep(0.1)
-    while sim_wind.getCurrentIteration() < numberOfIterations:
-    
-        current_iteration = sim_wind.getCurrentIteration()
-        while sim_wind.getCurrentIteration() <= current_iteration:
-            time.sleep(0.01)
-        
-        clear_output(wait=True)
-        map = sim_wind.generateWindMap2D(sim_wind.getCurrentIteration(), height, True)
+    for current_iteration in range(0,numberOfIterations):
+        map = sim.generateWindMap2D(current_iteration, height, True)
 
         base_image = numpy.full(map.shape, 255, numpy.uint8)
         block(map, base_image)
@@ -150,39 +128,37 @@ def save_wind_vector_field(height):
         img_str = base64.b64encode(compressed).decode('utf-8')
             
 
-        if sim_wind.getCurrentIteration() > last_iteration:
-            last_iteration = last_iteration + 1
-            print(f"{sim_wind.getCurrentIteration()}: Captured wind vector at {height:.2f}")
+        print(f"{current_iteration}: Captured wind vector at {height:.2f}")
 
-            response = requests.post('http://webserver:3000/uploadSimulationResults', json={
-                'simulation': simulation_name,
-                'type': 'wind',
-                'gif': img_str,
-                'height': height,
-                'iteration': current_iteration
-            })
+        response = requests.post('http://webserver:3000/uploadSimulationResults', json={
+            'simulation': simulation_name,
+            'type': 'wind',
+            'gif': img_str,
+            'height': height,
+            'iteration': current_iteration
+        })
 
-            if response.status_code != 200:
-                print(f"Failed to upload: {response.status_code}, {response.text}")
+
+        if response.status_code != 200:
+            print(f"Failed to upload: {response.status_code}, {response.text}")
 
     print("iteration limit reached, stopping simulation")
-    sim_wind.stopPlaying()
 
 
 def save_contour_map(height: float):
-    sim_contour.playSimulation(0, timePerIteration)
+    sim.playSimulation(0, timePerIteration)
     last_iteration = -1
 
-    while sim_contour.getCurrentIteration() != 0:
+    while sim.getCurrentIteration() != 0:
         time.sleep(0.1)
-    while sim_contour.getCurrentIteration() < numberOfIterations:
+    while sim.getCurrentIteration() < numberOfIterations:
         clear_output(wait=True)
 
-        current_iteration = sim_contour.getCurrentIteration()
-        while sim_contour.getCurrentIteration() <= current_iteration:
+        current_iteration = sim.getCurrentIteration()
+        while sim.getCurrentIteration() <= current_iteration:
             time.sleep(0.01)
 
-        map = sim_contour.generateConcentrationMap2D(sim_contour.getCurrentIteration(), height, True)
+        map = sim.generateConcentrationMap2D(sim.getCurrentIteration(), height, True)
         map = map * (255.0 / max_ppm)
         formatted_map = numpy.array(numpy.clip(map, 0, 255), dtype=numpy.uint8)
 
@@ -204,9 +180,9 @@ def save_contour_map(height: float):
         compressed = zlib.compress(buffered.getvalue())
         img_str = base64.b64encode(compressed).decode('utf-8')
 
-        if sim_contour.getCurrentIteration() > last_iteration:
+        if sim.getCurrentIteration() > last_iteration:
             last_iteration = last_iteration + 1
-            print(f"{sim_contour.getCurrentIteration()}: Captured countor at {height } — Gas patches: {len(contours)}")
+            print(f"{sim.getCurrentIteration()}: Captured countor at {height } — Gas patches: {len(contours)}")
 
             response = requests.post('http://webserver:3000/uploadSimulationResults', json={
                 'simulation': simulation_name,
@@ -219,10 +195,12 @@ def save_contour_map(height: float):
                 print(f"Failed to upload: {response.status_code}, {response.text}")
 
     print("iteration limit reached, stopping simulation")
-    sim_contour.stopPlaying()
+    sim.stopPlaying()
 
 
 for height in numpy.arange(minHeight, maxHeight, 0.5):
   save_heatmaps(height)
+  gc.collect()
   save_wind_vector_field(height)
+  gc.collect()
   #save_contour_map(height)
