@@ -451,16 +451,12 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
         return np.sqrt((robot1Position.x - finalPosition.x) ** 2 + (robot1Position.y - finalPosition.y) ** 2)
 
     def surge_cast():
-        robotSimulationIteration = 0
-        updateInterval = 0.5 # segundos
-        sim.playSimulation(startingIteration, updateInterval)
-
+        iteration = startingIteration
+        robotIteration = 0
         robot1Position = initialRobot1Position
         robot2Position = initialRobot2Position if robot2Speed is not None else None
         robot3Position = initialRobot3Position if robot3Speed is not None else None
         robot4Position = initialRobot4Position if robot4Speed is not None else None
-
-        last_iteration = startingIteration -1
 
         previousRobot1Positions = []
         previousRobot2Positions = []
@@ -488,21 +484,21 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
 
 
   
-
+        numOfRobots = None
         global frames
         frames = []
 
-        while sim.getCurrentIteration() != startingIteration:
-            time.sleep(0.01)
+        while (numOfRobots is None):
+            if robot4Position is not None: numOfRobots = 4; break
+            if robot4Position is None: numOfRobots = 3; break
+            if robot3Position is None: numOfRobots = 2; break
+            if robot2Position is None: numOfRobots = 1; break
+        
 
-
+        
+        start_time = time.time()
         while (True):
-            iteration = sim.getCurrentIteration()
 
-            
-            if iteration > last_iteration:
-                last_iteration = last_iteration + 1
-                print(f"Iteration: {iteration} robot1Position: {robot1Position}")
 
                 previousRobot1Positions.append(Vector3(robot1Position.x, robot1Position.y, robot1Position.z))
                 if robot2Position is not None:
@@ -510,6 +506,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
                     if robot3Position is not None:
                         previousRobot3Positions.append(Vector3(robot3Position.x, robot3Position.y, robot3Position.z))                
                         if robot4Position is not None:
+
                             previousRobot4Positions.append(Vector3(robot4Position.x, robot4Position.y, robot4Position.z))
                 
 
@@ -520,16 +517,16 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
 
                 concentration2 = concentration3 = concentration4 = 0
 
-                capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), robotSimulationIteration, 1)
+                capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), robotIteration, 1)
                 if robot2Position is not None:
                     concentration2 = sim.getCurrentConcentration(robot2Position) 
-                    capture_simulation_data(robot2Position, concentration2 , sim.getCurrentWind(robot2Position), robotSimulationIteration, 2)
+                    capture_simulation_data(robot2Position, concentration2 , sim.getCurrentWind(robot2Position), robotIteration, 2)
                     if robot3Position is not None:
                         concentration3 = sim.getCurrentConcentration(robot3Position) 
-                        capture_simulation_data(robot3Position, concentration3, sim.getCurrentWind(robot3Position), robotSimulationIteration, 3)
+                        capture_simulation_data(robot3Position, concentration3, sim.getCurrentWind(robot3Position), robotIteration, 3)
                         if robot4Position is not None:
                             concentration4 = sim.getCurrentConcentration(robot4Position) 
-                            capture_simulation_data(robot4Position, concentration4, sim.getCurrentWind(robot4Position), robotSimulationIteration, 4)
+                            capture_simulation_data(robot4Position, concentration4, sim.getCurrentWind(robot4Position), robotIteration, 4)
             
 
 
@@ -548,8 +545,9 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
                                         heatmap)
 
 
-                capture_frame_for_gif(heatmap,robotSimulationIteration)
-                robotSimulationIteration = robotSimulationIteration +1
+                capture_frame_for_gif(heatmap,robotIteration)
+                robotIteration = robotIteration +1
+                iteration = iteration +1
 
                 if robot1Position is not None and not robot1StopFlag:
                     robot1Position.x += robot1Speed * np.cos(angle1)
@@ -590,22 +588,22 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
                     # capture the final positions and concentrations
                     previousRobot1Positions.append(Vector3(robot1Position.x, robot1Position.y, robot1Position.z))
                     concentration1 = sim.getCurrentConcentration(robot1Position)
-                    capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), robotSimulationIteration, 1)
+                    capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), robotIteration, 1)
 
                     if robot2Position is not None:
                         previousRobot2Positions.append(Vector3(robot2Position.x, robot2Position.y, robot2Position.z))
                         concentration2 = sim.getCurrentConcentration(robot2Position)
-                        capture_simulation_data(robot2Position, concentration2, sim.getCurrentWind(robot2Position), robotSimulationIteration, 2)
+                        capture_simulation_data(robot2Position, concentration2, sim.getCurrentWind(robot2Position), robotIteration, 2)
 
                         if robot3Position is not None:
                             previousRobot3Positions.append(Vector3(robot3Position.x, robot3Position.y, robot3Position.z))                
                             concentration3 = sim.getCurrentConcentration(robot3Position)
-                            capture_simulation_data(robot3Position, concentration3, sim.getCurrentWind(robot3Position), robotSimulationIteration, 3)
+                            capture_simulation_data(robot3Position, concentration3, sim.getCurrentWind(robot3Position), robotIteration, 3)
 
                             if robot4Position is not None:
                                 previousRobot4Positions.append(Vector3(robot4Position.x, robot4Position.y, robot4Position.z))
                                 concentration4 = sim.getCurrentConcentration(robot4Position)
-                                capture_simulation_data(robot4Position, concentration4, sim.getCurrentWind(robot4Position), robotSimulationIteration, 4)
+                                capture_simulation_data(robot4Position, concentration4, sim.getCurrentWind(robot4Position), robotIteration, 4)
 
                     map = sim.generateConcentrationMap2D(iteration, height, True)
                     map_scaled = map * (255.0 / max_ppm)
@@ -618,14 +616,18 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
                     markPreviousPositions(previousRobot1Positions, previousRobot2Positions, previousRobot3Positions, previousRobot4Positions,
                     initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
                     heatmap)
-                    capture_frame_for_gif(heatmap,robotSimulationIteration)
+                    capture_frame_for_gif(heatmap,robotIteration)
 
                     print(f"Robot reached the target position: {robot1Position}")
+                    end_time = time.time()
+
+                    # Calculate the elapsed time
+                    elapsed_time = end_time - start_time
+                    median = elapsed_time / ((robotIteration+1)*numOfRobots)
+                    print(f"Midian time per robot iteration: {median} seconds.")
                     break
                 else:
                     print(f"The robot did not reach the end point. Current position: {robot1Position}")
-        
-        sim.stopPlaying()
 
 
 
@@ -852,9 +854,10 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
 
     def main():
         print("starting")
-        robotSimulationIteration = 0
-        updateInterval = 0.7 # segundos
-        sim.playSimulation(startingIteration, updateInterval)
+        robotIteration = 0
+        updateInterval = 0.7 #
+        iteration = startingIteration
+
 
         robot1Position = initialRobot1Position
         robot2Position = initialRobot2Position if robot2Speed is not None else None
@@ -891,8 +894,6 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
         global frames
         frames = []
 
-        while sim.getCurrentIteration() != startingIteration:
-            time.sleep(0.01)
         
         last_iteration =  startingIteration -1
         zigzag1_sign = 1 
@@ -910,11 +911,6 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
 
 
         while (True):
-            iteration = sim.getCurrentIteration()
-            if iteration > last_iteration:
-                last_iteration = iteration
-                print(f"Iteration: {iteration} robot1Position: {robot1Position}")
-
                 previousRobot1Positions.append(Vector3(robot1Position.x, robot1Position.y, robot1Position.z))
                 if robot2Position is not None:
                     previousRobot2Positions.append(Vector3(robot2Position.x, robot2Position.y, robot2Position.z))
@@ -931,16 +927,16 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
 
                 concentration2 = concentration3 = concentration4 = 0 
 
-                capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), robotSimulationIteration, 1)
+                capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), (iteration-startingIteration), 1)
                 if robot2Position is not None:
                     concentration2 = sim.getCurrentConcentration(robot2Position)
-                    capture_simulation_data(robot2Position, concentration2, sim.getCurrentWind(robot2Position), robotSimulationIteration, 2)
+                    capture_simulation_data(robot2Position, concentration2, sim.getCurrentWind(robot2Position), (iteration-startingIteration), 2)
                     if robot3Position is not None:
                         concentration3 = sim.getCurrentConcentration(robot3Position)
-                        capture_simulation_data(robot3Position,concentration3, sim.getCurrentWind(robot3Position), robotSimulationIteration, 3)
+                        capture_simulation_data(robot3Position,concentration3, sim.getCurrentWind(robot3Position), (iteration-startingIteration), 3)
                         if robot4Position is not None:
                             concentration4 = sim.getCurrentConcentration(robot4Position)
-                            capture_simulation_data(robot4Position, concentration4, sim.getCurrentWind(robot4Position), robotSimulationIteration, 4)
+                            capture_simulation_data(robot4Position, concentration4, sim.getCurrentWind(robot4Position), (iteration-startingIteration), 4)
             
 
 
@@ -958,11 +954,12 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                                         initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
                                         heatmap)
 
-                capture_frame_for_gif(heatmap,robotSimulationIteration)
-                robotSimulationIteration = robotSimulationIteration +1
-      
+                capture_frame_for_gif(heatmap,(iteration-startingIteration))
+                
+                
+
                 if robot1Position is not None and not robot1StopFlag:
-                    windVector = sim.getCurrentWind(robot1Position)
+                    windVector = sim.getWind(iteration,robot1Position)
                     wind_array = np.array([windVector.x, windVector.y, windVector.z])
 
                     if concentration1 > 0:
@@ -1018,7 +1015,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                         print(f"Robot 1 stopped at: {robot1Position}")
 
                 if robot2Position and angle2 and robot2Speed is not None  and not robot2StopFlag:
-                    windVector = sim.getCurrentWind(robot2Position)
+                    windVector = sim.getWind(iteration, robot2Position)
                     wind_array = np.array([windVector.x, windVector.y, windVector.z])
 
                     if concentration2 > 0:
@@ -1071,7 +1068,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                         print(f"Robot 2 reached the target position: {robot2Position}")
 
                 if robot3Position and angle3 and robot3Speed is not None and not robot3StopFlag:
-                    windVector = sim.getCurrentWind(robot3Position)
+                    windVector = sim.getWind(iteration, robot3Position)
                     wind_array = np.array([windVector.x, windVector.y, windVector.z])
 
                     if concentration3 > 0:
@@ -1124,7 +1121,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                         print(f"Robot 3 reached the target position: {robot3Position}")
 
                 if robot4Position and angle4 and robot4Speed is not None and not robot4StopFlag:
-                    windVector = sim.getCurrentWind(robot4Position)
+                    windVector = sim.getWind(iteration, robot4Position)
                     wind_array = np.array([windVector.x, windVector.y, windVector.z])
 
                     if concentration4 > 0:
@@ -1175,11 +1172,11 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                     if iteration >= robot4Iterations:
                         robot4StopFlag = True
                         print(f"Robot 4 reached the target position: {robot4Position}")
+                    
+                iteration = iteration +1
                 
                 if robot1StopFlag and robot2StopFlag and robot3StopFlag and robot4StopFlag: 
                     break
-            else:
-                time.sleep(0.01)
 
     main()
 

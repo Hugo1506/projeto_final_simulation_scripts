@@ -34,13 +34,13 @@ contour_threshold = 40
 timePerIteration = 1
 numberOfIterations = 100
 
-def mark_source(sim, image):
+def mark_source(current_iteration,sim, image):
     j = int((sim.source_position.x - sim.env_min.x) / (sim.env_max.x - sim.env_min.x) * image.shape[0])
     i = int((sim.source_position.y - sim.env_min.y) / (sim.env_max.y - sim.env_min.y) * image.shape[1])
 
     image = cv2.circle(image, (i, j), 4, (255, 255, 255), -1)
 
-    wind = sim.getCurrentWind(sim.source_position)
+    wind = sim.getWind(current_iteration,sim.source_position)
 
     end_j = int(j + wind.x * arrowLength)
     end_i = int(i + wind.y * arrowLength)
@@ -67,7 +67,7 @@ def save_heatmaps(height):
         heatmap = cv2.resize(heatmap, newshape)
 
         rgb_image = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
-        image_src = mark_source(sim,rgb_image)
+        image_src = mark_source(current_iteration,sim,rgb_image)
         pil_img = Image.fromarray(image_src)
 
         buffered = io.BytesIO()
