@@ -617,6 +617,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
                     initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
                     heatmap)
                     capture_frame_for_gif(heatmap,robotIteration)
+                    robotIteration = robotIteration +1
 
                     print(f"Robot reached the target position: {robot1Position}")
                     end_time = time.time()

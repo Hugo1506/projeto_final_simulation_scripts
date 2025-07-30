@@ -24,7 +24,7 @@ simulation_name = sys.argv[1].replace("_sim_", "_")
 sim = Simulation(simulation_path, \
                  ocuppancy_path)
 
-arrowLength = 200
+arrowLength = 20
 spaceBetweenArrows = 5
 maxHeight = sim.env_max.z
 minHeight = sim.env_min.z              
