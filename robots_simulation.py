@@ -511,22 +511,22 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
                 
 
 
-                concentration1 = sim.getCurrentConcentration(robot1Position)
+                concentration1 = sim.getConcentration(iteration,robot1Position)
                 print(f"Location: {robot1Position}")
                 print(f"Concentration at robot1 position: {concentration1} ppm")
 
                 concentration2 = concentration3 = concentration4 = 0
 
-                capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), robotIteration, 1)
+                capture_simulation_data(robot1Position, concentration1, sim.getWind(iteration,robot1Position), robotIteration, 1)
                 if robot2Position is not None:
-                    concentration2 = sim.getCurrentConcentration(robot2Position) 
-                    capture_simulation_data(robot2Position, concentration2 , sim.getCurrentWind(robot2Position), robotIteration, 2)
+                    concentration2 = sim.getConcentration(iteration,robot2Position) 
+                    capture_simulation_data(robot2Position, concentration2 , sim.getWind(iteration,robot2Position), robotIteration, 2)
                     if robot3Position is not None:
-                        concentration3 = sim.getCurrentConcentration(robot3Position) 
-                        capture_simulation_data(robot3Position, concentration3, sim.getCurrentWind(robot3Position), robotIteration, 3)
+                        concentration3 = sim.getConcentration(iteration,robot3Position) 
+                        capture_simulation_data(robot3Position, concentration3, sim.getWind(iteration,robot3Position), robotIteration, 3)
                         if robot4Position is not None:
-                            concentration4 = sim.getCurrentConcentration(robot4Position) 
-                            capture_simulation_data(robot4Position, concentration4, sim.getCurrentWind(robot4Position), robotIteration, 4)
+                            concentration4 = sim.getConcentration(iteration,robot4Position) 
+                            capture_simulation_data(robot4Position, concentration4, sim.getWind(iteration,robot4Position), robotIteration, 4)
             
 
 
@@ -587,23 +587,23 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
                     
                     # capture the final positions and concentrations
                     previousRobot1Positions.append(Vector3(robot1Position.x, robot1Position.y, robot1Position.z))
-                    concentration1 = sim.getCurrentConcentration(robot1Position)
-                    capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), robotIteration, 1)
+                    concentration1 = sim.getConcentration(iteration,robot1Position)
+                    capture_simulation_data(robot1Position, concentration1, sim.getWind(iteration,robot1Position), robotIteration, 1)
 
                     if robot2Position is not None:
                         previousRobot2Positions.append(Vector3(robot2Position.x, robot2Position.y, robot2Position.z))
-                        concentration2 = sim.getCurrentConcentration(robot2Position)
-                        capture_simulation_data(robot2Position, concentration2, sim.getCurrentWind(robot2Position), robotIteration, 2)
+                        concentration2 = sim.getConcentration(iteration,robot2Position)
+                        capture_simulation_data(robot2Position, concentration2, sim.getWind(iteration,robot2Position), robotIteration, 2)
 
                         if robot3Position is not None:
                             previousRobot3Positions.append(Vector3(robot3Position.x, robot3Position.y, robot3Position.z))                
-                            concentration3 = sim.getCurrentConcentration(robot3Position)
-                            capture_simulation_data(robot3Position, concentration3, sim.getCurrentWind(robot3Position), robotIteration, 3)
+                            concentration3 = sim.getConcentration(iteration,robot3Position)
+                            capture_simulation_data(robot3Position, concentration3, sim.getWind(iteration,robot3Position), robotIteration, 3)
 
                             if robot4Position is not None:
                                 previousRobot4Positions.append(Vector3(robot4Position.x, robot4Position.y, robot4Position.z))
-                                concentration4 = sim.getCurrentConcentration(robot4Position)
-                                capture_simulation_data(robot4Position, concentration4, sim.getCurrentWind(robot4Position), robotIteration, 4)
+                                concentration4 = sim.getConcentration(iteration,robot4Position)
+                                capture_simulation_data(robot4Position, concentration4, sim.getWind(iteration,robot4Position), robotIteration, 4)
 
                     map = sim.generateConcentrationMap2D(iteration, height, True)
                     map_scaled = map * (255.0 / max_ppm)
@@ -855,7 +855,6 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
 
     def main():
         print("starting")
-        robotIteration = 0
         updateInterval = 0.7 #
         iteration = startingIteration
 
@@ -896,7 +895,6 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
         frames = []
 
         
-        last_iteration =  startingIteration -1
         zigzag1_sign = 1 
         zigzag1_period = 3
 
@@ -922,22 +920,22 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                 
 
 
-                concentration1 = sim.getCurrentConcentration(robot1Position)
+                concentration1 = sim.getConcentration(iteration,robot1Position)
                 print(f"Location: {robot1Position}")
                 print(f"Concentration at robot1 position: {concentration1} ppm")
 
                 concentration2 = concentration3 = concentration4 = 0 
 
-                capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), (iteration-startingIteration), 1)
+                capture_simulation_data(robot1Position, concentration1, sim.getWind(iteration,robot1Position), (iteration-startingIteration), 1)
                 if robot2Position is not None:
-                    concentration2 = sim.getCurrentConcentration(robot2Position)
-                    capture_simulation_data(robot2Position, concentration2, sim.getCurrentWind(robot2Position), (iteration-startingIteration), 2)
+                    concentration2 = sim.getConcentration(iteration, robot2Position)
+                    capture_simulation_data(robot2Position, concentration2, sim.getWind(iteration,robot2Position), (iteration-startingIteration), 2)
                     if robot3Position is not None:
-                        concentration3 = sim.getCurrentConcentration(robot3Position)
-                        capture_simulation_data(robot3Position,concentration3, sim.getCurrentWind(robot3Position), (iteration-startingIteration), 3)
+                        concentration3 = sim.getConcentration(iteration,robot3Position)
+                        capture_simulation_data(robot3Position,concentration3, sim.getWind(iteration,robot3Position), (iteration-startingIteration), 3)
                         if robot4Position is not None:
-                            concentration4 = sim.getCurrentConcentration(robot4Position)
-                            capture_simulation_data(robot4Position, concentration4, sim.getCurrentWind(robot4Position), (iteration-startingIteration), 4)
+                            concentration4 = sim.getConcentration(iteration,robot4Position)
+                            capture_simulation_data(robot4Position, concentration4, sim.getWind(iteration,robot4Position), (iteration-startingIteration), 4)
             
 
 
@@ -1405,7 +1403,8 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
     def main():
         robotSimulationIteration = 0
         updateInterval = 0.5 # segundos
-        sim.playSimulation(0, updateInterval)
+        iteration = startingIteration
+
 
         robot1Position = initialRobot1Position
         robot2Position = initialRobot2Position if robot2Speed is not None else None
@@ -1442,21 +1441,14 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
         global frames
         frames = []
 
-        while sim.getCurrentIteration() != startingIteration:
-            time.sleep(0.01)
-        
-        last_iteration =  startingIteration -1
-        
+
         w = 0.7      
         c1 = 1.5   
         c2 = 1.5  
 
 
         while (True):
-            iteration = sim.getCurrentIteration()
-            if iteration > last_iteration:
-                last_iteration = iteration
-                print(f"Iteration: {iteration} robot1Position: {robot1Position}")
+
 
                 previousRobot1Positions.append(Vector3(robot1Position.x, robot1Position.y, robot1Position.z))
                 if robot2Position is not None:
@@ -1468,22 +1460,22 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
                 
 
 
-                concentration1 = sim.getCurrentConcentration(robot1Position)
+                concentration1 = sim.getConcentration(iteration,robot1Position)
                 print(f"Location: {robot1Position}")
                 print(f"Concentration at robot1 position: {concentration1} ppm")
 
                 concentration2 = concentration3 = concentration4 = 0 
 
-                capture_simulation_data(robot1Position, concentration1, sim.getCurrentWind(robot1Position), robotSimulationIteration, 1)
+                capture_simulation_data(robot1Position, concentration1, sim.getWind(iteration,robot1Position), robotSimulationIteration, 1)
                 if robot2Position is not None:
-                    concentration2 = sim.getCurrentConcentration(robot2Position)
-                    capture_simulation_data(robot2Position, concentration2, sim.getCurrentWind(robot2Position), robotSimulationIteration, 2)
+                    concentration2 = sim.getConcentration(iteration,robot2Position)
+                    capture_simulation_data(robot2Position, concentration2, sim.getWind(iteration,robot2Position), robotSimulationIteration, 2)
                     if robot3Position is not None:
-                        concentration3 = sim.getCurrentConcentration(robot3Position)
-                        capture_simulation_data(robot3Position,concentration3, sim.getCurrentWind(robot3Position), robotSimulationIteration, 3)
+                        concentration3 = sim.getConcentration(iteration,robot3Position)
+                        capture_simulation_data(robot3Position,concentration3, sim.getWind(iteration,robot3Position), robotSimulationIteration, 3)
                         if robot4Position is not None:
-                            concentration4 = sim.getCurrentConcentration(robot4Position)
-                            capture_simulation_data(robot4Position, concentration4, sim.getCurrentWind(robot4Position), robotSimulationIteration, 4)
+                            concentration4 = sim.getConcentration(iteration,robot4Position)
+                            capture_simulation_data(robot4Position, concentration4, sim.getWind(iteration,robot4Position), robotSimulationIteration, 4)
             
 
 
@@ -1502,6 +1494,7 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
                                         heatmap)
 
                 capture_frame_for_gif(heatmap,robotSimulationIteration)
+                iteration = iteration +1
                 robotSimulationIteration = robotSimulationIteration +1
 
                 if robot1Position is not None and not robot1StopFlag:
