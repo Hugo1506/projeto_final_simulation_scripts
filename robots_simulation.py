@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 import numpy as np
+import random
 import cv2
 import time
 import subprocess
@@ -258,21 +259,18 @@ def set_plume_location(username: str, simulationNumber: str, plumeXlocation: flo
     return JSONResponse(content={"message": "Plume location set successfully."})
 
 @app.get("/robot_simulation")
-def robot_simulation(username: str, simulationNumber: str, height: float, startingIteration: int, robots):
+def robot_simulation(username: str, simulationNumber: str, height: float, startingIteration: int, deviation: float, robots):
 
     if isinstance(robots, str):
         robots = json.loads(robots)
 
-    
-
     print(robots)
 
     robot1Speed = float(robots[0]["robotSpeed"])
-    robot1Xposition = float(robots[0]["robotXlocation"])
-    robot1Yposition = float(robots[0]["robotYlocation"])
-    final1Xposition = float(robots[0]["finalRobotXlocation"])
-    final1Yposition = float(robots[0]["finalRobotYlocation"])
-    
+    robot1Xposition = float(robots[0]["robotXlocation"]) +  random.uniform(-deviation,deviation)
+    robot1Yposition = float(robots[0]["robotYlocation"]) + random.uniform(-deviation,deviation)
+    final1Xposition = float(robots[0]["finalRobotXlocation"]) + random.uniform(-deviation,deviation)
+    final1Yposition = float(robots[0]["finalRobotYlocation"]) + random.uniform(-deviation,deviation)
 
     vector3Up = Vector3(0, 0, 1)
     initialRobot1Position = Vector3(robot1Xposition,robot1Yposition, height)
@@ -291,10 +289,10 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
 
     if len(robots) > 1:
         robot2Speed = float(robots[1]["robotSpeed"])
-        robot2Xposition = float(robots[1]["robotXlocation"])
-        robot2Yposition = float(robots[1]["robotYlocation"])
-        final2Xposition = float(robots[1]["finalRobotXlocation"])
-        final2Yposition = float(robots[1]["finalRobotYlocation"])
+        robot2Xposition = float(robots[1]["robotXlocation"]) + random.uniform(-deviation,deviation)
+        robot2Yposition = float(robots[1]["robotYlocation"]) +  random.uniform(-deviation,deviation)
+        final2Xposition = float(robots[1]["finalRobotXlocation"]) + random.uniform(-deviation,deviation)
+        final2Yposition = float(robots[1]["finalRobotYlocation"]) + random.uniform(-deviation,deviation)
 
         initialRobot2Position = Vector3(robot2Xposition,robot2Yposition, height)
         finalRobot2Position = Vector3(final2Xposition, final2Yposition, height)
@@ -317,10 +315,10 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
 
     if len(robots) > 2:
         robot3Speed = float(robots[2]["robotSpeed"])
-        robot3Xposition = float(robots[2]["robotXlocation"])
-        robot3Yposition = float(robots[2]["robotYlocation"])
-        final3Xposition = float(robots[2]["finalRobotXlocation"])
-        final3Yposition = float(robots[2]["finalRobotYlocation"])
+        robot3Xposition = float(robots[2]["robotXlocation"]) + random.uniform(-deviation,deviation)
+        robot3Yposition = float(robots[2]["robotYlocation"]) + random.uniform(-deviation,deviation)
+        final3Xposition = float(robots[2]["finalRobotXlocation"]) +  random.uniform(-deviation,deviation)
+        final3Yposition = float(robots[2]["finalRobotYlocation"]) +  random.uniform(-deviation,deviation)
 
         initialRobot3Position = Vector3(robot3Xposition,robot3Yposition, height)
         finalRobot3Position = Vector3(final3Xposition, final3Yposition, height)
@@ -342,10 +340,10 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
 
     if len(robots) > 3:
         robot4Speed = float(robots[3]["robotSpeed"])
-        robot4Xposition = float(robots[3]["robotXlocation"])
-        robot4Yposition = float(robots[3]["robotYlocation"])
-        final4Xposition = float(robots[3]["finalRobotXlocation"])
-        final4Yposition = float(robots[3]["finalRobotYlocation"])
+        robot4Xposition = float(robots[3]["robotXlocation"]) + random.uniform(-deviation,deviation)
+        robot4Yposition = float(robots[3]["robotYlocation"]) +  random.uniform(-deviation,deviation)
+        final4Xposition = float(robots[3]["finalRobotXlocation"]) + random.uniform(-deviation,deviation)
+        final4Yposition = float(robots[3]["finalRobotYlocation"]) + random.uniform(-deviation,deviation)
 
         initialRobot4Position = Vector3(robot4Xposition,robot4Yposition, height)
         finalRobot4Position = Vector3(final4Xposition, final4Yposition, height)
@@ -680,7 +678,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
     return JSONResponse(content={"frames": simulation_data_serializable, "robotSim_id": robotSim_id + 1}) 
 
 @app.get("/silkworm_moth_simulation")
-def silkworm_moth_simulation(username: str, simulationNumber: str, height: float, startingIteration: int, robots):
+def silkworm_moth_simulation(username: str, simulationNumber: str, height: float, startingIteration: int, deviation: float, robots):
     if isinstance(robots, str):
         robots = json.loads(robots)
 
@@ -688,8 +686,8 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
 
     robot1Iterations = int(robots[0]["iterations"])
     robot1Speed = float(robots[0]["robotSpeed"])
-    robot1Xposition = float(robots[0]["robotXlocation"])
-    robot1Yposition = float(robots[0]["robotYlocation"])
+    robot1Xposition = float(robots[0]["robotXlocation"]) + random.uniform(-deviation,deviation)
+    robot1Yposition = float(robots[0]["robotYlocation"]) + random.uniform(-deviation,deviation)
     angle1 = float(robots[0]["angle"])
     
     initialRobot1Position = Vector3(robot1Xposition,robot1Yposition, height)
@@ -697,8 +695,8 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
     if len(robots) > 1:
         robot2Iterations = int(robots[1]["iterations"])
         robot2Speed = float(robots[1]["robotSpeed"])
-        robot2Xposition = float(robots[1]["robotXlocation"])
-        robot2Yposition = float(robots[1]["robotYlocation"])
+        robot2Xposition = float(robots[1]["robotXlocation"]) + random.uniform(-deviation,deviation)
+        robot2Yposition = float(robots[1]["robotYlocation"]) + random.uniform(-deviation,deviation)
         angle2 = float(robots[1]["angle"])
 
         initialRobot2Position = Vector3(robot2Xposition,robot2Yposition, height)
@@ -713,8 +711,8 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
     if len(robots) > 2:
         robot3Iterations = int(robots[2]["iterations"])
         robot3Speed = float(robots[2]["robotSpeed"])
-        robot3Xposition = float(robots[2]["robotXlocation"])
-        robot3Yposition = float(robots[2]["robotYlocation"])
+        robot3Xposition = float(robots[2]["robotXlocation"]) + random.uniform(-deviation,deviation)
+        robot3Yposition = float(robots[2]["robotYlocation"]) + random.uniform(-deviation,deviation)
         angle3 = float(robots[2]["angle"])
 
         initialRobot3Position = Vector3(robot3Xposition,robot3Yposition, height)
@@ -729,8 +727,8 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
     if len(robots) > 3:
         robot4Iterations = int(robots[3]["iterations"])
         robot4Speed = float(robots[3]["robotSpeed"])
-        robot4Xposition = float(robots[3]["robotXlocation"])
-        robot4Yposition = float(robots[3]["robotYlocation"])
+        robot4Xposition = float(robots[3]["robotXlocation"]) + random.uniform(-deviation,deviation)
+        robot4Yposition = float(robots[3]["robotYlocation"]) + random.uniform(-deviation,deviation)
         angle4 = float(robots[3]["angle"])
 
         initialRobot4Position = Vector3(robot4Xposition,robot4Yposition, height)
@@ -1195,7 +1193,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
     return JSONResponse(content={"frames": simulation_data_serializable, "robotSim_id": robotSim_id + 1}) 
 
 @app.get("/pso_simmulation")
-def pso(username: str, simulationNumber: str, height: float,startingIteration: int, robots):
+def pso(username: str, simulationNumber: str, height: float,startingIteration: int, deviation: float, robots):
     if isinstance(robots, str):
         robots = json.loads(robots)
 
@@ -1203,8 +1201,8 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
 
     robot1Iterations = int(robots[0]["iterations"])
     robot1Speed = float(robots[0]["robotSpeed"])
-    robot1Xposition = float(robots[0]["robotXlocation"])
-    robot1Yposition = float(robots[0]["robotYlocation"])
+    robot1Xposition = float(robots[0]["robotXlocation"]) + random.uniform(-deviation,deviation)
+    robot1Yposition = float(robots[0]["robotYlocation"]) + random.uniform(-deviation,deviation)
     
     initialRobot1Position = Vector3(robot1Xposition,robot1Yposition, height)
     pbest1 = PBest(initialRobot1Position,0.0)
@@ -1213,8 +1211,8 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
     if len(robots) > 1:
         robot2Iterations = int(robots[1]["iterations"])
         robot2Speed = float(robots[1]["robotSpeed"])
-        robot2Xposition = float(robots[1]["robotXlocation"])
-        robot2Yposition = float(robots[1]["robotYlocation"])
+        robot2Xposition = float(robots[1]["robotXlocation"]) + random.uniform(-deviation,deviation)
+        robot2Yposition = float(robots[1]["robotYlocation"]) + random.uniform(-deviation,deviation)
 
         initialRobot2Position = Vector3(robot2Xposition,robot2Yposition, height)
 
@@ -1229,8 +1227,8 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
     if len(robots) > 2:
         robot3Iterations = int(robots[2]["iterations"])
         robot3Speed = float(robots[2]["robotSpeed"])
-        robot3Xposition = float(robots[2]["robotXlocation"])
-        robot3Yposition = float(robots[2]["robotYlocation"])
+        robot3Xposition = float(robots[2]["robotXlocation"]) + random.uniform(-deviation,deviation)
+        robot3Yposition = float(robots[2]["robotYlocation"]) + random.uniform(-deviation,deviation)
 
         initialRobot3Position = Vector3(robot3Xposition,robot3Yposition, height)
 
@@ -1246,8 +1244,8 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
     if len(robots) > 3:
         robot4Iterations = int(robots[3]["iterations"])
         robot4Speed = float(robots[3]["robotSpeed"])
-        robot4Xposition = float(robots[3]["robotXlocation"])
-        robot4Yposition = float(robots[3]["robotYlocation"])
+        robot4Xposition = float(robots[3]["robotXlocation"]) + random.uniform(-deviation,deviation)
+        robot4Yposition = float(robots[3]["robotYlocation"]) + random.uniform(-deviation,deviation)
 
         initialRobot4Position = Vector3(robot4Xposition,robot4Yposition, height)
 
