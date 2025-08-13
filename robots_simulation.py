@@ -23,6 +23,7 @@ import rclpy
 import re
 from GBestSubscriber import retrieve_gbest_position
 from GBestSubscriber import retrieve_gbest_concentration
+from GBestNoRos import GBestNoRos
 
 gaden_launch_path = '/src/gaden/test_env/launch'
 ros_work_dir = '/src'
@@ -1193,7 +1194,8 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
     return JSONResponse(content={"frames": simulation_data_serializable, "robotSim_id": robotSim_id + 1}) 
 
 @app.get("/pso_simmulation")
-def pso(username: str, simulationNumber: str, height: float,startingIteration: int, deviation: float, robots):
+def pso(username: str, simulationNumber: str, height: float,startingIteration: int, deviation: float, useRos: bool, robots):
+
     if isinstance(robots, str):
         robots = json.loads(robots)
 
@@ -1297,12 +1299,14 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
     average_pointY = calculate_average_position(robot1Yposition, robot2Yposition, robot3Yposition, robot4Yposition)
     
     average_point = Vector3(average_pointX,average_pointY,height)
-    
-    rclpy.init()
+
     global gbest
-    gbest = GBest(average_point, 0.0)
-    rclpy.spin_once(gbest, timeout_sec=0.1)
-    
+    if (useRos):
+        rclpy.init() 
+        gbest = GBest(average_point, 0.0)
+        rclpy.spin_once(gbest, timeout_sec=0.1)
+    else:
+        gbest = GBestNoRos(average_point, 0.0)
 
 
     def capture_frame_for_gif(image,iteration):        
@@ -1500,10 +1504,17 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
                     if concentration1 > pbest1.get_concentration():
                         pbest1.update_pbest(robot1Position, concentration1)
                     
-                    if concentration1 > retrieve_gbest_concentration():
-                        gbest.update_gbest(robot1Position , concentration1)
+                    if (useRos):
+                        if concentration1 > retrieve_gbest_concentration():
+                            gbest.update_gbest(robot1Position , concentration1)
 
-                    gbest_position = retrieve_gbest_position()
+                        gbest_position = retrieve_gbest_position()
+                    else:
+                        if concentration1 > gbest.get_concentration():
+                            gbest.update_gbest(robot1Position , concentration1)
+
+                        gbest_position = gbest.get_position()               
+
                     pbest1_position = pbest1.get_position()
 
                     r1 = np.random.rand()
@@ -1552,10 +1563,17 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
                     if concentration2 > pbest2.get_concentration():
                         pbest2.update_pbest(robot2Position, concentration2)
                     
-                    if concentration2 > retrieve_gbest_concentration():
-                        gbest.update_gbest(robot2Position , concentration2)
+                    if (useRos):
+                        if concentration2 > retrieve_gbest_concentration():
+                            gbest.update_gbest(robot2Position , concentration2)
 
-                    gbest_position = retrieve_gbest_position()
+                        gbest_position = retrieve_gbest_position()
+                    else:
+                        if concentration2 > gbest.get_concentration():
+                            gbest.update_gbest(robot2Position , concentration2)
+                            
+                        gbest_position = gbest.get_position()  
+
                     pbest2_position = pbest2.get_position()
 
                     r1 = np.random.rand()
@@ -1604,10 +1622,17 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
                     if concentration3 > pbest3.get_concentration():
                         pbest3.update_pbest(robot3Position, concentration3)
                     
-                    if concentration3 > retrieve_gbest_concentration():
-                        gbest.update_gbest(robot3Position , concentration3)
+                    if (useRos):
+                        if concentration3 > retrieve_gbest_concentration():
+                            gbest.update_gbest(robot3Position , concentration3)
 
-                    gbest_position = retrieve_gbest_position()
+                        gbest_position = retrieve_gbest_position()
+                    else:
+                        if concentration3 > gbest.get_concentration():
+                            gbest.update_gbest(robot3Position , concentration3)
+                            
+                        gbest_position = gbest.get_position()  
+
                     pbest3_position = pbest3.get_position()
 
                     r1 = np.random.rand()
@@ -1651,67 +1676,22 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
                     if iteration > robot3Iterations:
                         robot3StopFlag = True
 
-                if robot2Position is not None and not robot2StopFlag:
-
-                    if concentration2 > pbest2.get_concentration():
-                        pbest2.update_pbest(robot2Position, concentration2)
-                    
-                    if concentration2 > retrieve_gbest_concentration():
-                        gbest.update_gbest(robot2Position , concentration2)
-
-                    gbest_position = retrieve_gbest_position()
-                    pbest2_position = pbest2.get_position()
-
-                    r1 = np.random.rand()
-                    r2 = np.random.rand()
-
-                    new2_v_x = (
-                        w * robot2Velocity.x
-                        + c1 * r1 * (pbest2_position.x - robot2Position.x)
-                        + c2 * r2 * (gbest_position.x - robot2Position.x)
-                    )
-                    new2_v_y = (
-                        w * robot2Velocity.y
-                        + c1 * r1 * (pbest2_position.y - robot2Position.y)
-                        + c2 * r2 * (gbest_position.y - robot2Position.y)
-                    )
-                    new2_v_z = (
-                        w * robot2Velocity.z
-                        + c1 * r1 * (pbest2_position.z - robot2Position.z)
-                        + c2 * r2 * (gbest_position.z - robot2Position.z)
-                    )
-
-                    speed2 = np.sqrt(new2_v_x**2 + new2_v_y**2 + new2_v_z**2)
-                    if speed2 > robot2Speed:
-                        scale2 = robot2Speed / speed2
-                        new2_v_x *= scale2
-                        new2_v_y *= scale2
-                        new2_v_z *= scale2
-
-                    robot2Velocity.x = new2_v_x
-                    robot2Velocity.y = new2_v_y
-                    robot2Velocity.z = new2_v_z
-
-                    # Update position
-                    robot2Position.x += robot2Velocity.x * updateInterval
-                    robot2Position.y += robot2Velocity.y * updateInterval
-                    robot2Position.z += robot2Velocity.z * updateInterval
-
-                    print(f'Updated velocity: ({robot2Velocity.x}, {robot2Velocity.y}, {robot2Velocity.z})')
-                    print(f'Updated position: ({robot2Position.x}, {robot2Position.y}, {robot2Position.z})')
-
-                    if iteration > robot2Iterations:
-                        robot2StopFlag = True
-
                 if robot4Position is not None and not robot4StopFlag:
 
                     if concentration4 > pbest4.get_concentration():
                         pbest4.update_pbest(robot4Position, concentration4)
                     
-                    if concentration4 > retrieve_gbest_concentration():
-                        gbest.update_gbest(robot4Position , concentration4)
+                    if (useRos):
+                        if concentration4 > retrieve_gbest_concentration():
+                            gbest.update_gbest(robot4Position , concentration4)
 
-                    gbest_position = retrieve_gbest_position()
+                        gbest_position = retrieve_gbest_position()
+                    else:
+                        if concentration4 > gbest.get_concentration():
+                            gbest.update_gbest(robot4Position , concentration4)
+                            
+                        gbest_position = gbest.get_position()  
+
                     pbest4_position = pbest4.get_position()
 
                     r1 = np.random.rand()
@@ -1760,7 +1740,9 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
         
     main()
     simulation_data_serializable = []
-    rclpy.shutdown()
+    
+    if (useRos):
+        rclpy.shutdown()
 
     for frame in simulation_data:
         simulation_data_serializable.append({
