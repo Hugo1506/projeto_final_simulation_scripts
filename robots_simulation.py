@@ -261,7 +261,6 @@ def set_plume_location(username: str, simulationNumber: str, plumeXlocation: flo
 
 @app.get("/robot_simulation")
 def robot_simulation(username: str, simulationNumber: str, height: float, startingIteration: int, deviation: float, robots):
-
     if isinstance(robots, str):
         robots = json.loads(robots)
 
@@ -495,10 +494,9 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
         
 
         
-        start_time = time.time()
+        
         while (True):
-
-
+                start_time = time.time()
                 previousRobot1Positions.append(Vector3(robot1Position.x, robot1Position.y, robot1Position.z))
                 if robot2Position is not None:
                     previousRobot2Positions.append(Vector3(robot2Position.x, robot2Position.y, robot2Position.z))
@@ -543,8 +541,9 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
                                         initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
                                         heatmap)
 
-
-                capture_frame_for_gif(heatmap,robotIteration)
+                end_time = time.time()
+                elapsed_time = end_time - start_time
+                capture_frame_for_gif(heatmap,robotIteration,elapsed_time)
                 robotIteration = robotIteration +1
                 iteration = iteration +1
 
@@ -579,8 +578,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
                     if distanceFromTarger4 < robot4Speed:
                         robot4StopFlag = True
                         print(f"Robot 4 reached the target position: {robot4Position}")
-                
-
+                            
                 print(f"flags: robot1StopFlag: {robot1StopFlag}, robot2StopFlag: {robot2StopFlag}, robot3StopFlag: {robot3StopFlag}, robot4StopFlag: {robot4StopFlag}")
                 if robot1StopFlag and robot2StopFlag and robot3StopFlag and robot4StopFlag:
                     
@@ -615,23 +613,23 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
                     markPreviousPositions(previousRobot1Positions, previousRobot2Positions, previousRobot3Positions, previousRobot4Positions,
                     initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
                     heatmap)
-                    capture_frame_for_gif(heatmap,robotIteration)
+                   
+                    capture_frame_for_gif(heatmap,robotIteration,elapsed_time)
                     robotIteration = robotIteration +1
 
                     print(f"Robot reached the target position: {robot1Position}")
-                    end_time = time.time()
-
+                    
                     # Calculate the elapsed time
-                    elapsed_time = end_time - start_time
+                    
+                    global median
                     median = elapsed_time / ((robotIteration+1)*numOfRobots)
-                    print(f"Midian time per robot iteration: {median} seconds.")
+                    print(f"Median time per robot iteration: {median} seconds.")
                     break
                 else:
                     print(f"The robot did not reach the end point. Current position: {robot1Position}")
 
 
-
-    def capture_frame_for_gif(image,iteration):
+    def capture_frame_for_gif(image,iteration,time):
         
         rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(rgb_image)
@@ -652,6 +650,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
                 'gif': img_str,
                 'height': height,
                 'iteration': iteration,
+                'time' : time,
                 'robotSim_id': robotSim_id + 1 
             })
         global id 
@@ -755,7 +754,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
 
     simulation_data = []
 
-    def capture_frame_for_gif(image,iteration):
+    def capture_frame_for_gif(image,iteration,time):
         
         rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(rgb_image)
@@ -776,6 +775,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                 'gif': img_str,
                 'height': height,
                 'iteration': iteration,
+                'time' : time,
                 'robotSim_id': robotSim_id + 1 
             })
         global id 
@@ -909,6 +909,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
 
 
         while (True):
+                start_time = time.time()
                 previousRobot1Positions.append(Vector3(robot1Position.x, robot1Position.y, robot1Position.z))
                 if robot2Position is not None:
                     previousRobot2Positions.append(Vector3(robot2Position.x, robot2Position.y, robot2Position.z))
@@ -952,7 +953,9 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                                         initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
                                         heatmap)
 
-                capture_frame_for_gif(heatmap,(iteration-startingIteration))
+                end_time = time.time()
+                elapsed_time = end_time - start_time
+                capture_frame_for_gif(heatmap,(iteration-startingIteration),elapsed_time)
                 
                 
 
@@ -1309,7 +1312,7 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
         gbest = GBestNoRos(average_point, 0.0)
 
 
-    def capture_frame_for_gif(image,iteration):        
+    def capture_frame_for_gif(image,iteration,time):        
         rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(rgb_image)
 
@@ -1329,6 +1332,7 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
                 'gif': img_str,
                 'height': height,
                 'iteration': iteration,
+                'time' : time,
                 'robotSim_id': robotSim_id + 1 
             })
         global id 
@@ -1450,7 +1454,7 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
 
 
         while (True):
-
+                start_time = time.time()
 
                 previousRobot1Positions.append(Vector3(robot1Position.x, robot1Position.y, robot1Position.z))
                 if robot2Position is not None:
@@ -1495,7 +1499,9 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
                                         initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
                                         heatmap)
 
-                capture_frame_for_gif(heatmap,robotSimulationIteration)
+                end_time = time.time()
+                elapsed_time = end_time - start_time
+                capture_frame_for_gif(heatmap,robotSimulationIteration,elapsed_time)
                 iteration = iteration +1
                 robotSimulationIteration = robotSimulationIteration +1
 
