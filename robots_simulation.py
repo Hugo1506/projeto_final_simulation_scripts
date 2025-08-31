@@ -24,6 +24,7 @@ import re
 from GBestSubscriber import retrieve_gbest_position
 from GBestSubscriber import retrieve_gbest_concentration
 from GBestNoRos import GBestNoRos
+import csv 
 
 gaden_launch_path = '/src/gaden/test_env/launch'
 ros_work_dir = '/src'
@@ -449,6 +450,13 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
         return np.sqrt((robot1Position.x - finalPosition.x) ** 2 + (robot1Position.y - finalPosition.y) ** 2)
 
     def surge_cast():
+        timing_stats = {
+            "concentration_sampling": 0.0,
+            "image_processing": 0.0,
+            "frame_capture": 0.0,
+            "position_update": 0.0
+        }
+
         iteration = startingIteration
         robotIteration = 0
         robot1Position = initialRobot1Position
@@ -497,6 +505,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
         
         while (True):
                 start_time = time.time()
+
                 previousRobot1Positions.append(Vector3(robot1Position.x, robot1Position.y, robot1Position.z))
                 if robot2Position is not None:
                     previousRobot2Positions.append(Vector3(robot2Position.x, robot2Position.y, robot2Position.z))
@@ -506,9 +515,11 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
 
                             previousRobot4Positions.append(Vector3(robot4Position.x, robot4Position.y, robot4Position.z))
                 
-
-
+                
+                t0 = time.time()
                 concentration1 = sim.getConcentration(iteration,robot1Position)
+                
+
                 print(f"Location: {robot1Position}")
                 print(f"Concentration at robot1 position: {concentration1} ppm")
 
@@ -525,28 +536,34 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
                             concentration4 = sim.getConcentration(iteration,robot4Position) 
                             capture_simulation_data(robot4Position, concentration4, sim.getWind(iteration,robot4Position), robotIteration, 4)
             
+                timing_stats["concentration_sampling"] += time.time() - t0
 
-
+                t0 = time.time()
                 map = sim.generateConcentrationMap2D(iteration, height, True)
                 map_scaled = map * (255.0 / max_ppm)
                 formatted_map = np.array(np.clip(map_scaled, 0, 255), dtype=np.uint8)
-
                 base_image = cv2.applyColorMap(formatted_map, cv2.COLORMAP_JET)
                 block(map, base_image)
-
                 newshape = (imageSizeFactor * base_image.shape[1], imageSizeFactor * base_image.shape[0])
                 heatmap = cv2.resize(base_image, newshape)
+                
 
-                markPreviousPositions(previousRobot1Positions, previousRobot2Positions,previousRobot3Positions,previousRobot4Positions,
-                                        initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
-                                        heatmap)
+                markPreviousPositions(
+                    previousRobot1Positions, previousRobot2Positions, previousRobot3Positions, previousRobot4Positions,
+                    initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
+                    heatmap
+                )
+                timing_stats["image_processing"] += time.time() - t0
 
                 end_time = time.time()
                 elapsed_time = end_time - start_time
+                t0 = time.time()
                 capture_frame_for_gif(heatmap,robotIteration,elapsed_time)
+                timing_stats["frame_capture"] += time.time() - t0
                 robotIteration = robotIteration +1
                 iteration = iteration +1
 
+                t0 = time.time()
                 if robot1Position is not None and not robot1StopFlag:
                     robot1Position.x += robot1Speed * np.cos(angle1)
                     robot1Position.y += robot1Speed * np.sin(angle1)
@@ -578,7 +595,8 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
                     if distanceFromTarger4 < robot4Speed:
                         robot4StopFlag = True
                         print(f"Robot 4 reached the target position: {robot4Position}")
-                            
+                
+                timing_stats["position_update"] += time.time() - t0            
                 print(f"flags: robot1StopFlag: {robot1StopFlag}, robot2StopFlag: {robot2StopFlag}, robot3StopFlag: {robot3StopFlag}, robot4StopFlag: {robot4StopFlag}")
                 if robot1StopFlag and robot2StopFlag and robot3StopFlag and robot4StopFlag:
                     
@@ -618,7 +636,22 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
                     robotIteration = robotIteration +1
 
                     print(f"Robot reached the target position: {robot1Position}")
+                    total_time = sum(timing_stats.values())
+                    timing_percentages = {
+                        key: (value / total_time) * 100 for key, value in timing_stats.items()
+                    }
+
+                    print("\n--- Timing Summary ---")
+                    for key, pct in timing_percentages.items():
+                        print(f"{key}: {pct:.2f}%")
                     
+                    csv_filename = f"/projeto_final_simulation_scripts/timings_summary.csv"
+                    with open(csv_filename, mode="a", newline='') as csv_file:
+                        writer = csv.writer(csv_file)
+                        writer.writerow(["Step", "Percentage"])
+                        for key, pct in timing_percentages.items():
+                            writer.writerow([key, f"{pct:.2f}"])
+
                     # Calculate the elapsed time
                     
                     global median
