@@ -641,10 +641,11 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
                         key: (value / total_time) * 100 for key, value in timing_stats.items()
                     }
 
+                
                     print("\n--- Timing Summary ---")
                     for key, pct in timing_percentages.items():
                         print(f"{key}: {pct:.2f}%")
-                    
+                   
                     csv_filename = f"/projeto_final_simulation_scripts/timings_summary.csv"
                     with open(csv_filename, mode="a", newline='') as csv_file:
                         writer = csv.writer(csv_file)
@@ -886,8 +887,14 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
         return (angle + np.pi) % (2 * np.pi) - np.pi
 
     def main():
+        timing_stats = {
+            "concentration_sampling": 0.0,
+            "image_processing": 0.0,
+            "frame_capture": 0.0,
+            "position_update": 0.0
+        }
         print("starting")
-        updateInterval = 0.7 #
+        updateInterval = 0.7 
         iteration = startingIteration
 
 
@@ -952,7 +959,8 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                             previousRobot4Positions.append(Vector3(robot4Position.x, robot4Position.y, robot4Position.z))
                 
 
-
+                
+                t0 = time.time()
                 concentration1 = sim.getConcentration(iteration,robot1Position)
                 print(f"Location: {robot1Position}")
                 print(f"Concentration at robot1 position: {concentration1} ppm")
@@ -970,8 +978,8 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                             concentration4 = sim.getConcentration(iteration,robot4Position)
                             capture_simulation_data(robot4Position, concentration4, sim.getWind(iteration,robot4Position), (iteration-startingIteration), 4)
             
-
-
+                timing_stats["concentration_sampling"] += time.time() - t0
+                t0 = time.time()
                 map = sim.generateConcentrationMap2D(iteration, height, True)
                 map_scaled = map * (255.0 / max_ppm)
                 formatted_map = np.array(np.clip(map_scaled, 0, 255), dtype=np.uint8)
@@ -985,13 +993,17 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                 markPreviousPositions(previousRobot1Positions, previousRobot2Positions,previousRobot3Positions,previousRobot4Positions,
                                         initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
                                         heatmap)
+                
+                timing_stats["image_processing"] += time.time() - t0
 
                 end_time = time.time()
                 elapsed_time = end_time - start_time
+                t0 = time.time()
                 capture_frame_for_gif(heatmap,(iteration-startingIteration),elapsed_time)
+                timing_stats["frame_capture"] += time.time() - t0
                 
                 
-
+                t0 = time.time()
                 if robot1Position is not None and not robot1StopFlag:
                     windVector = sim.getWind(iteration,robot1Position)
                     wind_array = np.array([windVector.x, windVector.y, windVector.z])
@@ -1208,8 +1220,29 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                         print(f"Robot 4 reached the target position: {robot4Position}")
                     
                 iteration = iteration +1
+
+                timing_stats["position_update"] += time.time() - t0  
+
                 
+                
+
                 if robot1StopFlag and robot2StopFlag and robot3StopFlag and robot4StopFlag: 
+                    total_time = sum(timing_stats.values())
+                    timing_percentages = {
+                        key: (value / total_time) * 100 for key, value in timing_stats.items()
+                    }
+
+                
+                    print("\n--- Timing Summary ---")
+                    for key, pct in timing_percentages.items():
+                        print(f"{key}: {pct:.2f}%")
+                    
+                    csv_filename = f"/projeto_final_simulation_scripts/timings_summary.csv"
+                    with open(csv_filename, mode="a", newline='') as csv_file:
+                        writer = csv.writer(csv_file)
+                        writer.writerow(["Step", "Percentage"])
+                        for key, pct in timing_percentages.items():
+                            writer.writerow([key, f"{pct:.2f}"])
                     break
 
     main()
@@ -1440,6 +1473,12 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
                     cv2.putText(image, "R4", (i - 30, j), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
     def main():
+        timing_stats = {
+            "concentration_sampling": 0.0,
+            "image_processing": 0.0,
+            "frame_capture": 0.0,
+            "position_update": 0.0
+        }
         robotSimulationIteration = 0
         updateInterval = 0.5 # segundos
         iteration = startingIteration
@@ -1488,7 +1527,7 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
 
         while (True):
                 start_time = time.time()
-
+                
                 previousRobot1Positions.append(Vector3(robot1Position.x, robot1Position.y, robot1Position.z))
                 if robot2Position is not None:
                     previousRobot2Positions.append(Vector3(robot2Position.x, robot2Position.y, robot2Position.z))
@@ -1498,7 +1537,7 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
                             previousRobot4Positions.append(Vector3(robot4Position.x, robot4Position.y, robot4Position.z))
                 
 
-
+                t0 = time.time()
                 concentration1 = sim.getConcentration(iteration,robot1Position)
                 print(f"Location: {robot1Position}")
                 print(f"Concentration at robot1 position: {concentration1} ppm")
@@ -1517,7 +1556,8 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
                             capture_simulation_data(robot4Position, concentration4, sim.getWind(iteration,robot4Position), robotSimulationIteration, 4)
             
 
-
+                timing_stats["concentration_sampling"] += time.time() - t0
+                t0 = time.time()
                 map = sim.generateConcentrationMap2D(iteration, height, True)
                 map_scaled = map * (255.0 / max_ppm)
                 formatted_map = np.array(np.clip(map_scaled, 0, 255), dtype=np.uint8)
@@ -1531,13 +1571,17 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
                 markPreviousPositions(previousRobot1Positions, previousRobot2Positions,previousRobot3Positions,previousRobot4Positions,
                                         initialRobot1Position, initialRobot2Position, initialRobot3Position, initialRobot4Position,
                                         heatmap)
-
+                
+                timing_stats["image_processing"] += time.time() - t0
                 end_time = time.time()
                 elapsed_time = end_time - start_time
+                t0 = time.time()
                 capture_frame_for_gif(heatmap,robotSimulationIteration,elapsed_time)
+                timing_stats["frame_capture"] += time.time() - t0
                 iteration = iteration +1
                 robotSimulationIteration = robotSimulationIteration +1
 
+                t0 = time.time()
                 if robot1Position is not None and not robot1StopFlag:
 
                     if concentration1 > pbest1.get_concentration():
@@ -1773,8 +1817,26 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
 
                     if iteration > robot4Iterations:
                         robot4StopFlag = True
+                timing_stats["position_update"] += time.time() - t0   
 
                 if robot1StopFlag and robot2StopFlag and robot3StopFlag and robot4StopFlag:
+                    total_time = sum(timing_stats.values())
+                    timing_percentages = {
+                        key: (value / total_time) * 100 for key, value in timing_stats.items()
+                    }
+
+                
+                    print("\n--- Timing Summary ---")
+                    for key, pct in timing_percentages.items():
+                        print(f"{key}: {pct:.2f}%")
+                   
+                    csv_filename = f"/projeto_final_simulation_scripts/timings_summary.csv"
+                    with open(csv_filename, mode="a", newline='') as csv_file:
+                        writer = csv.writer(csv_file)
+                        writer.writerow(["Step", "Percentage"])
+                        for key, pct in timing_percentages.items():
+                            writer.writerow([key, f"{pct:.2f}"])
+                            
                     break
         
     main()
