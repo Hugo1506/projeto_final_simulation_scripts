@@ -1341,6 +1341,18 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
     sim = Simulation(simulation_path, \
                     ocuppancy_path)
 
+    all_items = os.listdir(simulation_path)
+    iteration_numbers = []
+    for item in all_items:
+        match = re.match(r'iteration_(\d+)', item)
+        if match:
+            iteration_numbers.append(int(match.group(1)))
+
+    if iteration_numbers:
+        highest_iteration = max(iteration_numbers)
+    else:
+        highest_iteration = 0
+
     imageSizeFactor = 5  
     max_ppm = 7.0
 
@@ -1526,6 +1538,9 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
 
 
         while (True):
+                if iteration>highest_iteration:
+                    iteration = startingIteration
+                    
                 start_time = time.time()
                 
                 previousRobot1Positions.append(Vector3(robot1Position.x, robot1Position.y, robot1Position.z))
@@ -1638,7 +1653,7 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
                     print(f'Updated velocity: ({robot1Velocity.x}, {robot1Velocity.y}, {robot1Velocity.z})')
                     print(f'Updated position: ({robot1Position.x}, {robot1Position.y}, {robot1Position.z})')
 
-                    if iteration > robot1Iterations:
+                    if robotSimulationIteration + startingIteration > robot1Iterations:
                         robot1StopFlag = True
                     
                 if robot2Position is not None and not robot2StopFlag:
@@ -1697,7 +1712,7 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
                     print(f'Updated velocity: ({robot2Velocity.x}, {robot2Velocity.y}, {robot2Velocity.z})')
                     print(f'Updated position: ({robot2Position.x}, {robot2Position.y}, {robot2Position.z})')
 
-                    if iteration > robot2Iterations:
+                    if robotSimulationIteration + startingIteration  > robot2Iterations:
                         robot2StopFlag = True
 
                 if robot3Position is not None and not robot3StopFlag:
@@ -1815,7 +1830,7 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
                     print(f'Updated velocity: ({robot4Velocity.x}, {robot4Velocity.y}, {robot4Velocity.z})')
                     print(f'Updated position: ({robot4Position.x}, {robot4Position.y}, {robot4Position.z})')
 
-                    if iteration > robot4Iterations:
+                    if robotSimulationIteration + startingIteration  > robot4Iterations:
                         robot4StopFlag = True
                 timing_stats["position_update"] += time.time() - t0   
 
@@ -1857,4 +1872,31 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
 
     return JSONResponse(content={"frames": simulation_data_serializable, "robotSim_id": robotSim_id + 1}) 
 
+@app.get("/new_simulation")
+def new_simulation(username: str, simulationNumber: str, height: float, startingIteration: int, deviation: float, code: str, robots):
+    
+    try:
+        robots = json.loads(robots.replace("'", '"'))
+    except Exception as e:
+        print("Error parsing robots:", e)
+        return JSONResponse(content={"status": "error", "message": "Invalid robots format"})
 
+    local_vars = {
+        "username": username,
+        "simulationNumber": simulationNumber,
+        "height": height,
+        "startingIteration": startingIteration,
+        "deviation": deviation,
+        "robots": robots,
+    }
+
+    try:
+        exec(code, local_vars, local_vars) 
+    except Exception as e:
+        print("Error executing code:", e)
+        return JSONResponse(content={"status": "error", "message": str(e)})
+
+    simulation_data_serializable = local_vars.get("simulation_data_serializable", [])
+    robotSim_id = local_vars.get("robotSim_id", 0)
+
+    return JSONResponse(content={"frames": simulation_data_serializable, "robotSim_id": robotSim_id + 1})
