@@ -25,11 +25,14 @@ from GBestSubscriber import retrieve_gbest_position
 from GBestSubscriber import retrieve_gbest_concentration
 from GBestNoRos import GBestNoRos
 import csv 
+from UserSimulationStatus import UserSimulationStatus
+
 
 gaden_launch_path = '/src/gaden/test_env/launch'
 ros_work_dir = '/src'
 
 
+user_simulation_statuses = {}
 
 x_min, x_max = None, None
 y_min, y_max = None, None
@@ -261,7 +264,7 @@ def set_plume_location(username: str, simulationNumber: str, plumeXlocation: flo
     return JSONResponse(content={"message": "Plume location set successfully."})
 
 @app.get("/robot_simulation")
-def robot_simulation(username: str, simulationNumber: str, height: float, startingIteration: int, deviation: float, robots):
+def robot_simulation(username: str, simulationNumber: str, height: float, startingIteration: int,simulationSet: str, deviation: float, robots):
     if isinstance(robots, str):
         robots = json.loads(robots)
 
@@ -376,7 +379,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
     imageSizeFactor = 5  
     max_ppm = 7.0
 
-    simulation_data = []
+
 
     def vector3_to_dict(v):
         return {"x": v.x, "y": v.y, "z": v.z}
@@ -450,6 +453,8 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
         return np.sqrt((robot1Position.x - finalPosition.x) ** 2 + (robot1Position.y - finalPosition.y) ** 2)
 
     def surge_cast():
+        global simulation_data
+        simulation_data = []
         timing_stats = {
             "concentration_sampling": 0.0,
             "image_processing": 0.0,
@@ -595,6 +600,26 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
                     if distanceFromTarger4 < robot4Speed:
                         robot4StopFlag = True
                         print(f"Robot 4 reached the target position: {robot4Position}")
+                print(user_simulation_statuses[username].wait)
+                if user_simulation_statuses[username].wait == False:
+                    simulation_data_to_send = []
+                    for frame in simulation_data:
+                        simulation_data_to_send.append({
+                            "robot_position": vector3_to_dict(frame["robot_position"]),
+                            "concentration": frame["concentration"],
+                            "wind_speed": vector3_to_dict(frame["wind_speed"]),
+                            "iteration": frame["iteration"],
+                            "robot": frame["robot"]
+                    })
+                    response = requests.post('http://webserver:3000/saveIteration', json={
+                        'simulation': simulation_name,
+                        'simulation_set': simulationSet,
+                        'frames': simulation_data_to_send,
+                        'robotSim_id': robotSim_id + 1 
+                    })
+                    simulation_data = []
+                
+
                 
                 timing_stats["position_update"] += time.time() - t0            
                 print(f"flags: robot1StopFlag: {robot1StopFlag}, robot2StopFlag: {robot2StopFlag}, robot3StopFlag: {robot3StopFlag}, robot4StopFlag: {robot4StopFlag}")
@@ -712,7 +737,7 @@ def robot_simulation(username: str, simulationNumber: str, height: float, starti
     return JSONResponse(content={"frames": simulation_data_serializable, "robotSim_id": robotSim_id + 1}) 
 
 @app.get("/silkworm_moth_simulation")
-def silkworm_moth_simulation(username: str, simulationNumber: str, height: float, startingIteration: int, deviation: float, robots):
+def silkworm_moth_simulation(username: str, simulationNumber: str, height: float, startingIteration: int, simulationSet: str, deviation: float, robots):
     if isinstance(robots, str):
         robots = json.loads(robots)
 
@@ -786,7 +811,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
     imageSizeFactor = 5  
     max_ppm = 7.0
 
-    simulation_data = []
+    
 
     def capture_frame_for_gif(image,iteration,time):
         
@@ -894,6 +919,8 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
             "position_update": 0.0
         }
         print("starting")
+        global simulation_data
+        simulation_data = []
         updateInterval = 0.7 
         iteration = startingIteration
 
@@ -1224,7 +1251,23 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
                 timing_stats["position_update"] += time.time() - t0  
 
                 
-                
+                if user_simulation_statuses[username].wait == False:
+                    simulation_data_to_send = []
+                    for frame in simulation_data:
+                        simulation_data_to_send.append({
+                            "robot_position": vector3_to_dict(frame["robot_position"]),
+                            "concentration": frame["concentration"],
+                            "wind_speed": vector3_to_dict(frame["wind_speed"]),
+                            "iteration": frame["iteration"],
+                            "robot": frame["robot"]
+                    })
+                    response = requests.post('http://webserver:3000/saveIteration', json={
+                        'simulation': simulation_name,
+                        'simulation_set': simulationSet,
+                        'frames': simulation_data_to_send,
+                        'robotSim_id': robotSim_id + 1 
+                    })
+                    simulation_data = []
 
                 if robot1StopFlag and robot2StopFlag and robot3StopFlag and robot4StopFlag: 
                     total_time = sum(timing_stats.values())
@@ -1263,7 +1306,7 @@ def silkworm_moth_simulation(username: str, simulationNumber: str, height: float
     return JSONResponse(content={"frames": simulation_data_serializable, "robotSim_id": robotSim_id + 1}) 
 
 @app.get("/pso_simmulation")
-def pso(username: str, simulationNumber: str, height: float,startingIteration: int, deviation: float, useRos: bool, robots):
+def pso(username: str, simulationNumber: str, height: float,startingIteration: int, simulationSet: str, deviation: float, useRos: bool, robots):
 
     if isinstance(robots, str):
         robots = json.loads(robots)
@@ -1356,7 +1399,7 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
     imageSizeFactor = 5  
     max_ppm = 7.0
 
-    simulation_data = []
+    
     def calculate_average_position(robot1position, robot2position, robot3position, robot4position):
         valid_positions = []
 
@@ -1491,6 +1534,10 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
             "frame_capture": 0.0,
             "position_update": 0.0
         }
+
+        global simulation_data
+        simulation_data = []
+
         robotSimulationIteration = 0
         updateInterval = 0.5 # segundos
         iteration = startingIteration
@@ -1832,7 +1879,25 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
 
                     if robotSimulationIteration + startingIteration  > robot4Iterations:
                         robot4StopFlag = True
-                timing_stats["position_update"] += time.time() - t0   
+                timing_stats["position_update"] += time.time() - t0  
+
+                if user_simulation_statuses[username].wait == False:
+                    simulation_data_to_send = []
+                    for frame in simulation_data:
+                        simulation_data_to_send.append({
+                            "robot_position": vector3_to_dict(frame["robot_position"]),
+                            "concentration": frame["concentration"],
+                            "wind_speed": vector3_to_dict(frame["wind_speed"]),
+                            "iteration": frame["iteration"],
+                            "robot": frame["robot"]
+                    })
+                    response = requests.post('http://webserver:3000/saveIteration', json={
+                        'simulation': simulation_name,
+                        'simulation_set': simulationSet,
+                        'frames': simulation_data_to_send,
+                        'robotSim_id': robotSim_id + 1 
+                    })
+                    simulation_data = []
 
                 if robot1StopFlag and robot2StopFlag and robot3StopFlag and robot4StopFlag:
                     total_time = sum(timing_stats.values())
@@ -1844,13 +1909,6 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
                     print("\n--- Timing Summary ---")
                     for key, pct in timing_percentages.items():
                         print(f"{key}: {pct:.2f}%")
-                   
-                    csv_filename = f"/projeto_final_simulation_scripts/timings_summary.csv"
-                    with open(csv_filename, mode="a", newline='') as csv_file:
-                        writer = csv.writer(csv_file)
-                        writer.writerow(["Step", "Percentage"])
-                        for key, pct in timing_percentages.items():
-                            writer.writerow([key, f"{pct:.2f}"])
                             
                     break
         
@@ -1900,3 +1958,26 @@ def new_simulation(username: str, simulationNumber: str, height: float, starting
     robotSim_id = local_vars.get("robotSim_id", 0)
 
     return JSONResponse(content={"frames": simulation_data_serializable, "robotSim_id": robotSim_id + 1})
+
+@app.get("/set_wait_for_simulation_end")
+def set_wait_for_simulation_end(username: str, wait: bool):
+    try:
+        if not username:
+            raise ValueError("Username is required")
+
+        if username in user_simulation_statuses:
+            user_simulation_statuses[username].wait = wait
+        else:
+            user_simulation_statuses[username] = UserSimulationStatus(username, wait)
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "Status updated",
+                "username": username,
+                "wait": user_simulation_statuses[username].wait
+            }
+        )
+    except Exception as e:
+        print(e)
+        return JSONResponse(status_code=500,content={"error": "Invalid request or missing username"})
