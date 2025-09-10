@@ -1931,13 +1931,17 @@ def pso(username: str, simulationNumber: str, height: float,startingIteration: i
     return JSONResponse(content={"frames": simulation_data_serializable, "robotSim_id": robotSim_id + 1}) 
 
 @app.get("/new_simulation")
-def new_simulation(username: str, simulationNumber: str, height: float, startingIteration: int, deviation: float, code: str, robots):
+def new_simulation(username: str, simulationNumber: str, height: float, startingIteration: int,simulationSet: str, deviation: float, code: str, robots):
     
     try:
         robots = json.loads(robots.replace("'", '"'))
     except Exception as e:
         print("Error parsing robots:", e)
         return JSONResponse(content={"status": "error", "message": "Invalid robots format"})
+    
+    for robot in robots:
+        if "customFields" in robot:
+            robot.update(robot["customFields"])
 
     local_vars = {
         "username": username,
@@ -1946,6 +1950,7 @@ def new_simulation(username: str, simulationNumber: str, height: float, starting
         "startingIteration": startingIteration,
         "deviation": deviation,
         "robots": robots,
+        "simulationSet": simulationSet,
     }
 
     try:
